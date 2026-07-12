@@ -43,8 +43,8 @@
     }, 2000);
   });
 
-  if (window.location.search) {
-    const decoded = decodeInputs(new URLSearchParams(window.location.search));
-    window.dispatchEvent(new CustomEvent('roofcalc:restore-inputs', { detail: decoded }));
+  const sp = new URLSearchParams(window.location.search);
+  if (sp.has('material') || sp.has('sqft') || sp.has('mode')) {
+    window.dispatchEvent(new CustomEvent('roofcalc:restore-inputs', { detail: decodeInputs(sp) }));
   }
 </script>

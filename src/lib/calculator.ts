@@ -152,7 +152,8 @@ export function decodeInputs(searchParams: URLSearchParams): CalculatorInputs {
   const material = searchParams.get('material');
   const pitch = searchParams.get('pitch');
   const region = searchParams.get('region');
-  const tearoff = Number(searchParams.get('tearoff'));
+  const tearoffRaw = searchParams.get('tearoff');
+  const tearoff = tearoffRaw === null ? DEFAULT_INPUTS.tearOffLayers : Number(tearoffRaw);
 
   return {
     areaMode: mode === 'footprint' ? 'footprint' : 'direct',

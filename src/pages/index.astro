@@ -63,10 +63,10 @@ const jsonLd = buildGraph([
 ]);
 
 const HUB_LINKS = [
-  { label: 'Gutter Replacement Cost Calculator', href: '/calculators/gutter-replacement-cost/' },
-  { label: 'Window Replacement Cost Calculator', href: '/calculators/window-replacement-cost/' },
-  { label: 'Metal Roof Cost Calculator', href: '/calculators/metal-roof-cost/' },
-  { label: 'Siding Cost Calculator', href: '/calculators/siding-cost/' },
+  { label: 'Gutter Replacement Cost Calculator' },
+  { label: 'Window Replacement Cost Calculator' },
+  { label: 'Metal Roof Cost Calculator' },
+  { label: 'Siding Cost Calculator' },
 ];
 ---
 
@@ -459,13 +459,12 @@ const HUB_LINKS = [
     </h2>
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
       {HUB_LINKS.map((link) => (
-        <a
-          href={link.href}
-          class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+        <div
+          class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink"
         >
           {link.label}
           <span class="rounded-full bg-canvas-soft-2 px-2 py-0.5 text-xs font-normal text-mute">Coming soon</span>
-        </a>
+        </div>
       ))}
     </div>
   </section>
