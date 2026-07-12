@@ -508,52 +508,46 @@ const HUB_LINKS = [
 
     <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Methodology</h2>
     <p class="mt-4 text-body">
-      Every number this calculator outputs traces back to a named, checkable source. Where more than
-      one live source publishes comparable data for the same adjustment, we blend them by taking the
-      mean rather than picking whichever number is easiest to defend; where only one source publishes
-      usable data, we say so; where a source was checked and didn&rsquo;t hold up, we name it and
-      explain why it was excluded instead of quietly leaving it out.
+      Every number on this page links to where it came from. When two sources publish comparable
+      data for the same adjustment, we average them. When only one does, we say so. When a source
+      didn&rsquo;t hold up, we name it and tell you why we left it out.
     </p>
 
     <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Material &amp; Install Rates</h3>
     <p class="mt-2 text-body">
-      Asphalt, wood shake, metal, concrete/clay tile, and natural slate cost-per-square figures are
-      quoted directly from <a href="https://www.roofcalc.org/" class="text-link underline hover:text-link-deep">roofcalc.org</a>&rsquo;s
-      published installation price table. Single-sourced; checked {DATE_PUBLISHED}.
+      We pull the cost-per-square figures for asphalt, wood shake, metal, concrete/clay tile, and
+      natural slate straight from <a href="https://www.roofcalc.org/" class="text-link underline hover:text-link-deep">roofcalc.org</a>&rsquo;s
+      published installation price table. One source; checked {DATE_PUBLISHED}.
     </p>
 
-    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Regional Labor Adjustment &mdash; Blend of 1 Source, 2 of 8 Regions Averaged Across Sub-Regions</h3>
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Regional Labor Adjustment</h3>
     <p class="mt-2 text-body">
       We checked three sources for regional cost data: <a href="https://www.roofcalc.org/regional-roofing-price-adjustments-in-us/" class="text-link underline hover:text-link-deep">roofcalc.org</a>,
-      homewyse.com, and fixr.com. Only roofcalc.org publishes a clean, directly comparable percentage
-      adjustment for all nine U.S. Census regions, so every region multiplier below is single-sourced
-      to it. homewyse.com&rsquo;s roofing calculators require an interactive ZIP code and return no
-      static per-region figure, so no usable data could be pulled from it. fixr.com publishes
-      per-state cost pages, but each one uses a different baseline roof size and roof type (a 2,000
-      sq ft cross-gable in Ohio, a 1,700 sq ft roof in Florida, a 3,000 sq ft roof in Maryland), so
-      normalizing those into one comparable percentage would manufacture precision the source
-      doesn&rsquo;t support; we excluded it rather than force a fit. Two of our eight region buckets
-      (Northeast, Midwest) are wider than roofcalc.org&rsquo;s own regions, so those two multipliers
-      are the mean of roofcalc.org&rsquo;s own constituent sub-regions &mdash; e.g. Northeast averages
-      roofcalc.org&rsquo;s New England (+7.37%) and Mid Atlantic (+6.67%) figures. The remaining six
-      buckets, including East South Central (KY, TN, MS, AL), map 1:1 to a single roofcalc.org region
-      each. Checked {DATE_PUBLISHED}.
+      homewyse.com, and fixr.com. Only roofcalc.org publishes one clean percentage adjustment for all
+      nine U.S. Census regions, so every multiplier below comes from it. homewyse.com&rsquo;s
+      calculator needs an interactive ZIP code and never outputs a static number, so we couldn&rsquo;t
+      use it. fixr.com prices each state against a different roof size and type (Ohio&rsquo;s baseline
+      is a 2,000 sq ft cross-gable, Florida&rsquo;s is 1,700 sq ft, Maryland&rsquo;s is 3,000 sq ft),
+      and averaging mismatched baselines would just fabricate precision, so we left it out. Two of
+      our eight regions, Northeast and Midwest, are wider than roofcalc.org&rsquo;s own regions. For
+      those, we average roofcalc.org&rsquo;s own sub-regions: Northeast blends New England (+7.37%)
+      and Mid Atlantic (+6.67%). The other six regions, including East South Central (KY, TN, MS,
+      AL), map 1:1 to a single roofcalc.org region. Checked {DATE_PUBLISHED}.
     </p>
 
     <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Pitch Labor Adjustment</h3>
     <p class="mt-2 text-body">
-      <a href="https://www.squaredash.com/cost/labor/" class="text-link underline hover:text-link-deep">squaredash.com/cost/labor/</a> states
-      steep roofs (8/12 and up) run $200&ndash;$275 per square in labor against $150&ndash;$175 per
-      square for a walkable roof. The steep-pitch surcharge is that source's steep midpoint minus its
-      walkable midpoint ($237.50 - $162.50 = $75/sq), charged as a flat per-square amount rather than a
-      multiplier, since our material rates are already installed (material + labor) prices and
-      multiplying an installed rate by a labor-only ratio would double-count labor and scale the
-      surcharge with material price instead of with the actual difficulty of the work. This surcharge
-      is shown as its own &ldquo;Steep-pitch labor surcharge&rdquo; line item and applies only to
-      material &amp; install labor, not to tear-off or underlayment, since no source supports a
-      steep-slope premium on those tasks. Single-sourced; checked {DATE_PUBLISHED}. This is separate
-      from, and stacks with, the geometric factor that converts a footprint into sloped roof area,
-      which is unsourced basic trigonometry rather than a cost claim.
+      <a href="https://www.squaredash.com/cost/labor/" class="text-link underline hover:text-link-deep">squaredash.com/cost/labor/</a> puts
+      steep roofs (8/12 and up) at $200&ndash;$275 per square in labor, against $150&ndash;$175 per
+      square for a walkable roof. We take the gap between those midpoints, $237.50 minus $162.50, for
+      a $75/sq surcharge. We add it as a flat dollar amount instead of a multiplier: our material
+      rates already include labor, so multiplying an installed price by a labor-only ratio would
+      double-count labor and tie the surcharge to your shingle price instead of the actual difficulty
+      of working a steep roof. It shows up as its own &ldquo;Steep-pitch labor surcharge&rdquo; line
+      item, and it applies only to material &amp; install labor. No source backs a steep-slope
+      premium on tear-off or underlayment, so we don&rsquo;t add one. Single-sourced; checked
+      {DATE_PUBLISHED}. The geometry factor that turns a footprint into sloped roof area is separate
+      math, plain trigonometry, and stacks on top of this surcharge.
     </p>
 
     <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Tear-Off &amp; Underlayment</h3>
