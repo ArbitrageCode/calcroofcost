@@ -177,7 +177,7 @@ export const PITCH_ADDERS: PitchRate[] = [
   {
     key: 'very_steep',
     label: 'Very steep slope',
-    pitchRange: '11/12+',
+    pitchRange: '11/12 - 13/12',
     laborSurchargePerSquare: 75,
     sourceNote: `${PITCH_LABOR_SOURCE} Source does not publish a tier finer than "8/12 and above," so this tier shares the steep-tier surcharge ($75/sq) rather than an extrapolated escalation beyond what the source states.`,
   },
