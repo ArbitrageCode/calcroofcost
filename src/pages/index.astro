@@ -4,9 +4,9 @@ import CTASlot from '../components/CTASlot.astro';
 import CitePage from '../components/CitePage.astro';
 import ShareResult from '../components/ShareResult.astro';
 import { MATERIALS, PITCH_ADDERS, REGIONS, REGIONAL_DISCLAIMER } from '../data/rates';
-import { AUTHOR } from '../data/author';
+import { ORGANIZATION } from '../data/author';
 import { calculate, DEFAULT_INPUTS } from '../lib/calculator';
-import { buildGraph, personNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
+import { buildGraph, organizationNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
 
 const PAGE_PATH = '/';
 const DATE_PUBLISHED = '2026-07-03';
@@ -46,12 +46,12 @@ const FAQS = [
   {
     question: 'How do I know if I need a full roof replacement instead of a repair?',
     answer:
-      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See the Repair vs. Replace section below for a full breakdown.',
+      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See the <a href="/blog/roof-repair-vs-replacement/" class="text-link underline hover:text-link-deep">Repair vs. Replace</a> section below for a full breakdown.',
   },
 ];
 
 const jsonLd = buildGraph([
-  personNode(Astro.site!),
+  organizationNode(Astro.site!),
   articleNode(Astro.site!, {
     path: PAGE_PATH,
     headline: title,
@@ -530,7 +530,9 @@ const HUB_LINKS = [
       <strong>Roof pitch</strong> affects how much material you need, since steeper roofs have more
       surface area per square foot of footprint. Steep-slope work is also slower and needs more
       safety equipment in the real world, but this calculator doesn&rsquo;t add a separate charge for
-      that yet, since no reliable published source states exactly how much it should be.
+      that yet, since no reliable published source states exactly how much it should be. See
+      <a href="/blog/roof-pitch-cost-impact/" class="text-link underline hover:text-link-deep">how roof pitch affects replacement cost</a>
+      for the geometry behind that adjustment.
       <strong>Region</strong> captures differences in labor rates, permitting fees, and disposal
       costs across the country, though only two of seven regions carry a verified adjustment today;
       the rest sit at national parity until a citable source turns up. Finally,
@@ -547,7 +549,8 @@ const HUB_LINKS = [
       cost, a harder combination to justify on value alone unless the look matters more than the
       math. Metal roofing changes the math: a {MATERIALS[2].lifespanYears[0]}-{MATERIALS[2].lifespanYears[1]}-year lifespan means most metal roofs outlast
       the mortgage on the house they cover, and many insurers discount premiums for impact-resistant
-      metal panels. Concrete and clay tile push further still, lasting {MATERIALS[3].lifespanYears[0]}-{MATERIALS[4].lifespanYears[1]} years
+      metal panels; see our <a href="/blog/metal-vs-asphalt-roof-cost-comparison/" class="text-link underline hover:text-link-deep">metal vs. asphalt cost comparison</a>
+      for the full numbers. Concrete and clay tile push further still, lasting {MATERIALS[3].lifespanYears[0]}-{MATERIALS[4].lifespanYears[1]} years
       when the structure underneath can carry the added weight. Natural slate is the outlier at {MATERIALS[5].lifespanYears[0]}-{MATERIALS[5].lifespanYears[1]} years; a well-maintained slate roof can outlast the house around it. Divide
       total installed cost by expected lifespan years and the annualized gap between materials
       narrows, even though the sticker price does not.
@@ -609,7 +612,7 @@ const HUB_LINKS = [
   <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
     <CitePage
       title={title}
-      authorName={AUTHOR.name}
+      authorName={ORGANIZATION.name}
       datePublished={DATE_PUBLISHED}
     />
   </section>
@@ -624,7 +627,7 @@ const HUB_LINKS = [
           <summary class="cursor-pointer list-none text-base font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
             {faq.question}
           </summary>
-          <p class="mt-2 text-sm text-body">{faq.answer}</p>
+          <p class="mt-2 text-sm text-body" set:html={faq.answer} />
         </details>
       ))}
     </div>

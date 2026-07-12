@@ -3,14 +3,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getBlogPost } from '../../data/blogPosts';
 import { PITCH_ADDERS } from '../../data/rates';
 import { calculate, pitchAreaFactor } from '../../lib/calculator';
-import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+import { buildGraph, organizationNode, articleNode, breadcrumbNode } from '../../lib/schema';
 
 const post = getBlogPost('roof-pitch-cost-impact');
 const PAGE_PATH = `/blog/${post.slug}/`;
 const title = `${post.title} | CalcRoofCost.com`;
 
 const jsonLd = buildGraph([
-  personNode(Astro.site!),
+  organizationNode(Astro.site!),
   articleNode(Astro.site!, {
     path: PAGE_PATH,
     headline: post.title,

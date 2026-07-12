@@ -1,14 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { AUTHOR } from '../data/author';
-import { buildGraph, personNode, breadcrumbNode } from '../lib/schema';
+import { ORGANIZATION } from '../data/author';
+import { buildGraph, organizationNode, breadcrumbNode } from '../lib/schema';
 
 const title = 'About | CalcRoofCost.com';
 const description =
   'CalcRoofCost.com builds free, transparent roofing and home-improvement cost calculators, backed by researched cost data and clear methodology.';
 
 const jsonLd = buildGraph([
-  personNode(Astro.site!),
+  organizationNode(Astro.site!),
   breadcrumbNode(Astro.site!, [
     { name: 'Home', path: '/' },
     { name: 'About', path: '/about/' },
@@ -23,27 +23,62 @@ const jsonLd = buildGraph([
     <h1 class="text-3xl font-semibold tracking-tight text-ink">About CalcRoofCost.com</h1>
 
     <p class="mt-6 text-body">
-      CalcRoofCost.com builds free, single-purpose cost calculators for home improvement projects,
-      starting with roof replacement. Every calculator on this site is built the same way: a
-      published, sourced rate table drives the math, the methodology is explained in plain language
-      on the page, and every number in the result is broken out into a line item you can check
-      against your own contractor quotes.
+      {ORGANIZATION.description}
+      Every calculator on this site is built the same way: a published, sourced rate table drives
+      the math, the methodology is explained in plain language on the page, and every number in the
+      result is broken out into a line item you can check against your own contractor quotes.
     </p>
 
-    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Our Approach to Cost Data</h2>
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">What the Calculator Does</h2>
+    <p class="mt-4 text-body">
+      The roof replacement calculator takes your roof size (entered directly, or estimated from your
+      home&rsquo;s footprint and story count), your material choice, tear-off and underlayment
+      preferences, and your region, and turns them into a Low/Mid/High cost estimate with a full
+      line-item breakdown. It exists so you can sanity-check a contractor quote against a
+      transparent, sourced baseline before you sign anything.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">How the Math Works</h2>
+    <p class="mt-4 text-body">
+      Roof area converts to &ldquo;squares&rdquo; (100 sq ft each), then a per-square material rate,
+      a tear-off rate, and an underlayment rate are applied and summed into a subtotal. A regional
+      labor multiplier adjusts that subtotal, and a symmetric 0.85x&ndash;1.15x spread around the
+      result produces the Low and High bounds around the Mid estimate. The full step-by-step
+      breakdown, with a worked example, is on the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">calculator page</a>
+      under &ldquo;How This Calculator Works.&rdquo;
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Where Our Rates Come From</h2>
     <p class="mt-4 text-body">
       Cost estimates are synthesized from published industry sources rather than a single vendor
       quote engine, and every rate carries a source note in the underlying data file. We treat every
       figure as a planning estimate, not a substitute for an on-site contractor quote &mdash; local
       material availability, labor market conditions, and roof-specific complexity can all move the
-      real number away from any calculator&rsquo;s estimate.
+      real number away from any calculator&rsquo;s estimate. The same sources cited on the calculator
+      page back every rate here:
     </p>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-body">
+      <li>
+        <strong>Material cost per square</strong>: <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>
+      </li>
+      <li>
+        <strong>Tear-off cost per layer</strong>: <a href="https://squaredash.com/cost/tear-off/" class="text-link underline hover:text-link-deep">squaredash.com/cost/tear-off/</a>
+      </li>
+      <li>
+        <strong>Underlayment upgrade cost</strong>: <a href="https://fixr.com/costs/roof-underlayment-replacement" class="text-link underline hover:text-link-deep">fixr.com/costs/roof-underlayment-replacement</a>
+      </li>
+      <li>
+        <strong>Regional labor multipliers</strong>: <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>
+      </li>
+    </ul>
 
-    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Author</h2>
-    <div class="mt-4 rounded-lg border border-hairline bg-canvas p-6">
-      <p class="font-medium text-ink">{AUTHOR.name}</p>
-      <p class="text-sm text-mute">{AUTHOR.jobTitle}</p>
-      <p class="mt-3 text-sm text-body">{AUTHOR.description}</p>
-    </div>
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Report an Error</h2>
+    <p class="mt-4 text-body">
+      Found a rate that looks out of date, a calculation that seems off, or anything else that
+      doesn&rsquo;t look right? <a href="/contact/" class="text-link underline hover:text-link-deep">Contact us</a>
+      with the page and the number you&rsquo;re questioning, and we&rsquo;ll check it against the
+      source.
+    </p>
   </article>
 </BaseLayout>

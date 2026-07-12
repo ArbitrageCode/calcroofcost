@@ -1,4 +1,4 @@
-import { AUTHOR } from '../data/author';
+import { ORGANIZATION } from '../data/author';
 
 export interface BreadcrumbItem {
   name: string;
@@ -14,14 +14,13 @@ function abs(site: URL | string, path: string): string {
   return new URL(path, site).toString();
 }
 
-export function personNode(site: URL | string) {
+export function organizationNode(site: URL | string) {
   return {
-    '@type': 'Person',
-    '@id': abs(site, `${AUTHOR.path}#person`),
-    name: AUTHOR.name,
-    jobTitle: AUTHOR.jobTitle,
-    description: AUTHOR.description,
-    url: abs(site, AUTHOR.path),
+    '@type': 'Organization',
+    '@id': abs(site, `${ORGANIZATION.path}#organization`),
+    name: ORGANIZATION.name,
+    description: ORGANIZATION.description,
+    url: abs(site, ORGANIZATION.path),
   };
 }
 
@@ -43,7 +42,7 @@ export function articleNode(
     datePublished: opts.datePublished,
     dateModified: opts.dateModified ?? opts.datePublished,
     mainEntityOfPage: abs(site, opts.path),
-    author: { '@id': abs(site, `${AUTHOR.path}#person`) },
+    author: { '@id': abs(site, `${ORGANIZATION.path}#organization`) },
     publisher: {
       '@type': 'Organization',
       name: 'CalcRoofCost.com',

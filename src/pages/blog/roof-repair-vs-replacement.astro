@@ -2,14 +2,14 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getBlogPost } from '../../data/blogPosts';
 import { calculate, DEFAULT_INPUTS } from '../../lib/calculator';
-import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+import { buildGraph, organizationNode, articleNode, breadcrumbNode } from '../../lib/schema';
 
 const post = getBlogPost('roof-repair-vs-replacement');
 const PAGE_PATH = `/blog/${post.slug}/`;
 const title = `${post.title} | CalcRoofCost.com`;
 
 const jsonLd = buildGraph([
-  personNode(Astro.site!),
+  organizationNode(Astro.site!),
   articleNode(Astro.site!, {
     path: PAGE_PATH,
     headline: post.title,

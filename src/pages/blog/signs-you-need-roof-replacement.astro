@@ -2,14 +2,14 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getBlogPost } from '../../data/blogPosts';
 import { calculate } from '../../lib/calculator';
-import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+import { buildGraph, organizationNode, articleNode, breadcrumbNode } from '../../lib/schema';
 
 const post = getBlogPost('signs-you-need-roof-replacement');
 const PAGE_PATH = `/blog/${post.slug}/`;
 const title = `${post.title} | CalcRoofCost.com`;
 
 const jsonLd = buildGraph([
-  personNode(Astro.site!),
+  organizationNode(Astro.site!),
   articleNode(Astro.site!, {
     path: PAGE_PATH,
     headline: post.title,
@@ -47,7 +47,7 @@ const priorRepairs = 650 + 900 + 2200;
     <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
 
     <p class="mt-6 text-body">
-      A homeowner in Tulsa paid $650 to fix a flashing leak in 2023 and $900 for a shingle patch in 2024. In 2026, a roofer quotes $2,200 to fix a new leak around the chimney on the same 22-year-old, 1,800 sq ft asphalt roof. That's {usd(priorRepairs)} in repairs on one roof in three years, and the leaks keep finding new spots. Run that same roof through the
+      Suppose a homeowner spends $650 on a flashing leak, then $900 on a shingle patch two years later, on a 22-year-old, 1,800 sq ft asphalt roof. A couple of years after that, a roofer quotes $2,200 to fix a new leak around the chimney on the same roof. That's {usd(priorRepairs)} in repairs on one roof, and the leaks keep finding new spots. Run that same roof through the
       <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">replacement cost calculator</a>
       and a full reroof lands between {usd(replacement.low)} and {usd(replacement.high)}, with {usd(replacement.mid)} as the likely number. Nine signs separate a roof that needs one more patch from a roof that needs the whole thing torn off.
     </p>
@@ -94,7 +94,7 @@ const priorRepairs = 650 + 900 + 2200;
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">9. You've Already Paid for Two Repairs</h2>
     <p class="mt-4 text-body">
-      Every roof reaches a point where repairs stop paying for themselves. Two or more separate repair bills in the past two to three years is that point for most homeowners. Add up what you've spent, the way the Tulsa homeowner above did with {usd(priorRepairs)} across three repairs, and compare that total against a written replacement quote. The gap is often smaller than expected, and a third repair rarely buys more than another year before the next call.
+      Every roof reaches a point where repairs stop paying for themselves. Two or more separate repair bills in the past two to three years is that point for most homeowners. Add up what you've spent, the way the hypothetical homeowner above did with {usd(priorRepairs)} across three repairs, and compare that total against a written replacement quote. The gap is often smaller than expected, and a third repair rarely buys more than another year before the next call.
     </p>
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Check Your Own Roof Before You Call Anyone</h2>

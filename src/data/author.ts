@@ -1,10 +1,9 @@
-// Single Person entity reused across every page's JSON-LD (Article.author +
-// the standalone Person node) and about.astro, so the author is consistent
-// site-wide instead of redefined per page.
-export const AUTHOR = {
-  name: 'Marcus Webb',
-  jobTitle: 'Roofing Cost Analyst',
+// Single Organization entity reused across every page's JSON-LD (Article.author
+// + the standalone Organization node) and about.astro, so the publisher
+// identity stays consistent site-wide instead of being redefined per page.
+export const ORGANIZATION = {
+  name: 'CalcRoofCost',
   description:
-    'Marcus Webb researches residential construction and remodeling costs, with a focus on roofing material pricing and regional labor cost trends across the U.S.',
-  path: '/about/',
+    'CalcRoofCost builds free, transparent roofing and home-improvement cost calculators, backed by researched, sourced cost data and a published methodology.',
+  path: '/',
 };
