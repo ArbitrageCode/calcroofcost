@@ -76,7 +76,12 @@ export interface CalculatorResult {
   mid: number;
   low: number;
   high: number;
+  /** Set when the resolved roof area is out of the valid 1-20,000 sq ft range; other fields are zeroed. */
+  error?: string;
 }
+
+const MIN_ROOF_AREA_SQFT = 1;
+const MAX_ROOF_AREA_SQFT = 20000;
 
 export function calculate(inputs: CalculatorInputs): CalculatorResult {
   const material = getMaterial(inputs.material);
@@ -85,11 +90,24 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
 
   let roofAreaSqft: number;
   if (inputs.areaMode === 'direct') {
-    roofAreaSqft = Math.max(0, inputs.directSqft);
+    roofAreaSqft = inputs.directSqft;
   } else {
     const stories = Math.max(1, inputs.stories);
-    const footprintSqft = Math.max(0, inputs.homeSqft) / stories;
+    const footprintSqft = inputs.homeSqft / stories;
     roofAreaSqft = footprintSqft * pitchAreaFactor(inputs.pitch);
+  }
+
+  if (roofAreaSqft <= 0 || roofAreaSqft > MAX_ROOF_AREA_SQFT) {
+    return {
+      roofAreaSqft: 0,
+      squares: 0,
+      lineItems: { materialCost: 0, tearOffCost: 0, underlaymentCost: 0 },
+      subtotal: 0,
+      mid: 0,
+      low: 0,
+      high: 0,
+      error: `Enter a roof area between ${MIN_ROOF_AREA_SQFT} and ${MAX_ROOF_AREA_SQFT.toLocaleString('en-US')} sq ft`,
+    };
   }
 
   const squares = roofAreaSqft / 100;

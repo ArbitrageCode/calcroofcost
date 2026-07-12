@@ -71,6 +71,158 @@ const HUB_LINKS = [
 ---
 
 <BaseLayout title={title} description={description}>
+  <script>
+    import { calculate, decodeInputs, type CalculatorInputs, type TearOffLayers, type AreaMode } from '../lib/calculator';
+    import type { MaterialKey, PitchKey, RegionKey } from '../data/rates';
+
+    const currency = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    });
+
+    const form = document.getElementById('roof-calculator-form') as HTMLFormElement;
+    const directFields = document.getElementById('area-mode-direct-fields')!;
+    const footprintFields = document.getElementById('area-mode-footprint-fields')!;
+    const pitchField = document.getElementById('pitch-field')!;
+    const tearoffToggle = document.getElementById('tearoff-toggle') as HTMLInputElement;
+    const tearoffLayersField = document.getElementById('tearoff-layers-field')!;
+
+    function readInputs(): CalculatorInputs {
+      const areaMode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value as AreaMode;
+      return {
+        areaMode,
+        directSqft: Number((document.getElementById('direct-sqft') as HTMLInputElement).value) || 0,
+        homeSqft: Number((document.getElementById('home-sqft') as HTMLInputElement).value) || 0,
+        stories: Number((document.getElementById('stories') as HTMLSelectElement).value) || 1,
+        material: (document.getElementById('material') as HTMLSelectElement).value as MaterialKey,
+        pitch: (document.getElementById('pitch') as HTMLSelectElement).value as PitchKey,
+        tearOffLayers: tearoffToggle.checked
+          ? (Number((document.getElementById('tearoff-layers') as HTMLSelectElement).value) as TearOffLayers)
+          : 0,
+        underlayment: (document.getElementById('underlayment-toggle') as HTMLInputElement).checked,
+        region: (document.getElementById('region') as HTMLSelectElement).value as RegionKey,
+      };
+    }
+
+    function applyInputs(inputs: CalculatorInputs) {
+      (document.getElementById(inputs.areaMode === 'direct' ? 'area-mode-direct' : 'area-mode-footprint') as HTMLInputElement).checked = true;
+      (document.getElementById('direct-sqft') as HTMLInputElement).value = String(inputs.directSqft);
+      (document.getElementById('home-sqft') as HTMLInputElement).value = String(inputs.homeSqft);
+      (document.getElementById('stories') as HTMLSelectElement).value = String(inputs.stories);
+      (document.getElementById('material') as HTMLSelectElement).value = inputs.material;
+      (document.getElementById('pitch') as HTMLSelectElement).value = inputs.pitch;
+      tearoffToggle.checked = inputs.tearOffLayers > 0;
+      (document.getElementById('tearoff-layers') as HTMLSelectElement).value = String(inputs.tearOffLayers || 1);
+      (document.getElementById('underlayment-toggle') as HTMLInputElement).checked = inputs.underlayment;
+      (document.getElementById('region') as HTMLSelectElement).value = inputs.region;
+      updateAreaModeVisibility();
+      updateTearoffVisibility();
+    }
+
+    function updateAreaModeVisibility() {
+      const mode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value;
+      directFields.classList.toggle('hidden', mode !== 'direct');
+      footprintFields.classList.toggle('hidden', mode !== 'footprint');
+      pitchField.classList.toggle('hidden', mode !== 'footprint');
+    }
+
+    function updateTearoffVisibility() {
+      tearoffLayersField.classList.toggle('hidden', !tearoffToggle.checked);
+    }
+
+    function render() {
+      const inputs = readInputs();
+      const result = calculate(inputs);
+      const errorEl = document.getElementById('result-error')!;
+      const numbersEl = document.getElementById('results-numbers')!;
+
+      if (result.error) {
+        errorEl.textContent = result.error;
+        errorEl.classList.remove('hidden');
+        numbersEl.classList.add('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+        numbersEl.classList.remove('hidden');
+        document.getElementById('result-low')!.textContent = currency.format(result.low);
+        document.getElementById('result-mid')!.textContent = currency.format(result.mid);
+        document.getElementById('result-high')!.textContent = currency.format(result.high);
+        document.getElementById('bd-material')!.textContent = currency.format(result.lineItems.materialCost);
+        document.getElementById('bd-tearoff')!.textContent = currency.format(result.lineItems.tearOffCost);
+        document.getElementById('bd-underlayment')!.textContent = currency.format(result.lineItems.underlaymentCost);
+        document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
+        document.getElementById('bd-area')!.textContent = result.roofAreaSqft.toLocaleString('en-US');
+        document.getElementById('bd-squares')!.textContent = String(result.squares);
+      }
+
+      window.dispatchEvent(new CustomEvent('roofcalc:inputs-changed', { detail: inputs }));
+      return { inputs, result };
+    }
+
+    form.addEventListener('input', () => {
+      updateAreaModeVisibility();
+      updateTearoffVisibility();
+      render();
+    });
+
+    window.addEventListener('roofcalc:restore-inputs', (event) => {
+      applyInputs((event as CustomEvent<CalculatorInputs>).detail);
+      render();
+    });
+
+    const statusEl = document.getElementById('result-action-status')!;
+
+    document.getElementById('copy-result-button')?.addEventListener('click', async () => {
+      const { inputs, result } = render();
+      const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+      const summary = [
+        'Roof Replacement Cost Estimate',
+        'CalcRoofCost.com',
+        `Material: ${materialLabel}`,
+        `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft (${result.squares} squares)`,
+        `Low: ${currency.format(result.low)}`,
+        `Mid: ${currency.format(result.mid)}`,
+        `High: ${currency.format(result.high)}`,
+      ].join('\n');
+      await navigator.clipboard.writeText(summary);
+      statusEl.textContent = 'Result copied to clipboard!';
+      window.setTimeout(() => (statusEl.textContent = ''), 2500);
+    });
+
+    document.getElementById('download-summary-button')?.addEventListener('click', () => {
+      const { result } = render();
+      const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+      const regionLabel = (document.getElementById('region') as HTMLSelectElement).selectedOptions[0].textContent;
+      const lines = [
+        'Roof Replacement Cost Estimate',
+        'CalcRoofCost.com',
+        '',
+        `Material: ${materialLabel}`,
+        `Region: ${regionLabel}`,
+        `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft (${result.squares} squares)`,
+        '',
+        `Material & Install: ${currency.format(result.lineItems.materialCost)}`,
+        `Tear-Off: ${currency.format(result.lineItems.tearOffCost)}`,
+        `Underlayment: ${currency.format(result.lineItems.underlaymentCost)}`,
+        `Subtotal: ${currency.format(result.subtotal)}`,
+        '',
+        `Low estimate: ${currency.format(result.low)}`,
+        `Mid estimate: ${currency.format(result.mid)}`,
+        `High estimate: ${currency.format(result.high)}`,
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'roof-replacement-cost-estimate.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    updateAreaModeVisibility();
+    updateTearoffVisibility();
+    render();
+  </script>
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
   <section class="mx-auto max-w-4xl px-4 pt-12 pb-8 sm:px-6 sm:pt-16">
@@ -146,7 +298,7 @@ const HUB_LINKS = [
           </div>
         </div>
 
-        <div>
+        <div id="pitch-field" class="hidden">
           <label for="pitch" class="block text-sm font-medium text-ink">Roof Pitch</label>
           <select
             id="pitch"
@@ -220,6 +372,8 @@ const HUB_LINKS = [
 
       <div class="rounded-lg bg-canvas-soft-2 p-6" aria-live="polite">
         <p class="text-sm font-medium text-body">Estimated Cost</p>
+        <p id="result-error" class="mt-2 hidden text-sm text-error" role="alert"></p>
+        <div id="results-numbers">
         <div class="mt-2 grid grid-cols-3 gap-2 text-center">
           <div>
             <p class="text-xs uppercase tracking-wide text-mute">Low</p>
@@ -281,6 +435,7 @@ const HUB_LINKS = [
           Roof area used: <span id="bd-area" class="tabular-nums">{defaultResult.roofAreaSqft.toLocaleString('en-US')}</span> sq ft
           (<span id="bd-squares" class="tabular-nums">{defaultResult.squares}</span> squares)
         </p>
+        </div>
 
         <div class="mt-6 flex flex-wrap gap-3">
           <button
@@ -334,6 +489,28 @@ const HUB_LINKS = [
       more to haul away. Underlayment adds the cost of upgrading from basic felt, already priced into
       the base material rate, to a synthetic or ice-and-water-shield underlayment. {REGIONAL_DISCLAIMER}
     </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Rate Sources</h2>
+    <p class="mt-4 text-body">
+      Every cost figure on this page is quoted from one of the live sources below, checked {DATE_PUBLISHED}.
+      Where no reliable source could be verified for an adjustment, the value is left at neutral
+      instead of being shown as sourced; see the sections above for which adjustments that applies to.
+    </p>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-body">
+      <li>
+        <strong>Material cost per square</strong> (asphalt, wood shake, metal, concrete tile, clay
+        tile, natural slate): <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>, checked {DATE_PUBLISHED}.
+      </li>
+      <li>
+        <strong>Tear-off cost per layer</strong>: <a href="https://squaredash.com/cost/tear-off/" class="text-link underline hover:text-link-deep">squaredash.com/cost/tear-off/</a>, checked {DATE_PUBLISHED}.
+      </li>
+      <li>
+        <strong>Underlayment upgrade cost</strong>: <a href="https://fixr.com/costs/roof-underlayment-replacement" class="text-link underline hover:text-link-deep">fixr.com/costs/roof-underlayment-replacement</a>, checked {DATE_PUBLISHED}.
+      </li>
+      <li>
+        <strong>Regional labor multipliers</strong> (Pacific, West South Central): <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>, checked {DATE_PUBLISHED}.
+      </li>
+    </ul>
 
     <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">What Drives Roof Replacement Cost</h2>
     <p class="mt-4 text-body">
@@ -469,144 +646,3 @@ const HUB_LINKS = [
     </div>
   </section>
 </BaseLayout>
-
-<script>
-  import { calculate, decodeInputs, type CalculatorInputs, type TearOffLayers, type AreaMode } from '../lib/calculator';
-  import type { MaterialKey, PitchKey, RegionKey } from '../data/rates';
-
-  const currency = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
-
-  const form = document.getElementById('roof-calculator-form') as HTMLFormElement;
-  const directFields = document.getElementById('area-mode-direct-fields')!;
-  const footprintFields = document.getElementById('area-mode-footprint-fields')!;
-  const tearoffToggle = document.getElementById('tearoff-toggle') as HTMLInputElement;
-  const tearoffLayersField = document.getElementById('tearoff-layers-field')!;
-
-  function readInputs(): CalculatorInputs {
-    const areaMode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value as AreaMode;
-    return {
-      areaMode,
-      directSqft: Number((document.getElementById('direct-sqft') as HTMLInputElement).value) || 0,
-      homeSqft: Number((document.getElementById('home-sqft') as HTMLInputElement).value) || 0,
-      stories: Number((document.getElementById('stories') as HTMLSelectElement).value) || 1,
-      material: (document.getElementById('material') as HTMLSelectElement).value as MaterialKey,
-      pitch: (document.getElementById('pitch') as HTMLSelectElement).value as PitchKey,
-      tearOffLayers: tearoffToggle.checked
-        ? (Number((document.getElementById('tearoff-layers') as HTMLSelectElement).value) as TearOffLayers)
-        : 0,
-      underlayment: (document.getElementById('underlayment-toggle') as HTMLInputElement).checked,
-      region: (document.getElementById('region') as HTMLSelectElement).value as RegionKey,
-    };
-  }
-
-  function applyInputs(inputs: CalculatorInputs) {
-    (document.getElementById(inputs.areaMode === 'direct' ? 'area-mode-direct' : 'area-mode-footprint') as HTMLInputElement).checked = true;
-    (document.getElementById('direct-sqft') as HTMLInputElement).value = String(inputs.directSqft);
-    (document.getElementById('home-sqft') as HTMLInputElement).value = String(inputs.homeSqft);
-    (document.getElementById('stories') as HTMLSelectElement).value = String(inputs.stories);
-    (document.getElementById('material') as HTMLSelectElement).value = inputs.material;
-    (document.getElementById('pitch') as HTMLSelectElement).value = inputs.pitch;
-    tearoffToggle.checked = inputs.tearOffLayers > 0;
-    (document.getElementById('tearoff-layers') as HTMLSelectElement).value = String(inputs.tearOffLayers || 1);
-    (document.getElementById('underlayment-toggle') as HTMLInputElement).checked = inputs.underlayment;
-    (document.getElementById('region') as HTMLSelectElement).value = inputs.region;
-    updateAreaModeVisibility();
-    updateTearoffVisibility();
-  }
-
-  function updateAreaModeVisibility() {
-    const mode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value;
-    directFields.classList.toggle('hidden', mode !== 'direct');
-    footprintFields.classList.toggle('hidden', mode !== 'footprint');
-  }
-
-  function updateTearoffVisibility() {
-    tearoffLayersField.classList.toggle('hidden', !tearoffToggle.checked);
-  }
-
-  function render() {
-    const inputs = readInputs();
-    const result = calculate(inputs);
-
-    document.getElementById('result-low')!.textContent = currency.format(result.low);
-    document.getElementById('result-mid')!.textContent = currency.format(result.mid);
-    document.getElementById('result-high')!.textContent = currency.format(result.high);
-    document.getElementById('bd-material')!.textContent = currency.format(result.lineItems.materialCost);
-    document.getElementById('bd-tearoff')!.textContent = currency.format(result.lineItems.tearOffCost);
-    document.getElementById('bd-underlayment')!.textContent = currency.format(result.lineItems.underlaymentCost);
-    document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
-    document.getElementById('bd-area')!.textContent = result.roofAreaSqft.toLocaleString('en-US');
-    document.getElementById('bd-squares')!.textContent = String(result.squares);
-
-    window.dispatchEvent(new CustomEvent('roofcalc:inputs-changed', { detail: inputs }));
-    return { inputs, result };
-  }
-
-  form.addEventListener('input', () => {
-    updateAreaModeVisibility();
-    updateTearoffVisibility();
-    render();
-  });
-
-  window.addEventListener('roofcalc:restore-inputs', (event) => {
-    applyInputs((event as CustomEvent<CalculatorInputs>).detail);
-    render();
-  });
-
-  const statusEl = document.getElementById('result-action-status')!;
-
-  document.getElementById('copy-result-button')?.addEventListener('click', async () => {
-    const { inputs, result } = render();
-    const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
-    const summary = [
-      'Roof Replacement Cost Estimate',
-      'CalcRoofCost.com',
-      `Material: ${materialLabel}`,
-      `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft (${result.squares} squares)`,
-      `Low: ${currency.format(result.low)}`,
-      `Mid: ${currency.format(result.mid)}`,
-      `High: ${currency.format(result.high)}`,
-    ].join('\n');
-    await navigator.clipboard.writeText(summary);
-    statusEl.textContent = 'Result copied to clipboard!';
-    window.setTimeout(() => (statusEl.textContent = ''), 2500);
-  });
-
-  document.getElementById('download-summary-button')?.addEventListener('click', () => {
-    const { result } = render();
-    const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
-    const regionLabel = (document.getElementById('region') as HTMLSelectElement).selectedOptions[0].textContent;
-    const lines = [
-      'Roof Replacement Cost Estimate',
-      'CalcRoofCost.com',
-      '',
-      `Material: ${materialLabel}`,
-      `Region: ${regionLabel}`,
-      `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft (${result.squares} squares)`,
-      '',
-      `Material & Install: ${currency.format(result.lineItems.materialCost)}`,
-      `Tear-Off: ${currency.format(result.lineItems.tearOffCost)}`,
-      `Underlayment: ${currency.format(result.lineItems.underlaymentCost)}`,
-      `Subtotal: ${currency.format(result.subtotal)}`,
-      '',
-      `Low estimate: ${currency.format(result.low)}`,
-      `Mid estimate: ${currency.format(result.mid)}`,
-      `High estimate: ${currency.format(result.high)}`,
-    ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'roof-replacement-cost-estimate.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
-
-  updateAreaModeVisibility();
-  updateTearoffVisibility();
-  render();
-</script>
