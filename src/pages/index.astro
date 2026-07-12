@@ -46,6 +46,8 @@ const FAQS = [
   {
     question: 'How do I know if I need a full roof replacement instead of a repair?',
     answer:
+      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See the Repair vs. Replace section below for a full breakdown.',
+    answerHtml:
       'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See the <a href="/blog/roof-repair-vs-replacement/" class="text-link underline hover:text-link-deep">Repair vs. Replace</a> section below for a full breakdown.',
   },
 ];
@@ -84,7 +86,6 @@ const HUB_LINKS = [
     const form = document.getElementById('roof-calculator-form') as HTMLFormElement;
     const directFields = document.getElementById('area-mode-direct-fields')!;
     const footprintFields = document.getElementById('area-mode-footprint-fields')!;
-    const pitchField = document.getElementById('pitch-field')!;
     const tearoffToggle = document.getElementById('tearoff-toggle') as HTMLInputElement;
     const tearoffLayersField = document.getElementById('tearoff-layers-field')!;
 
@@ -124,7 +125,10 @@ const HUB_LINKS = [
       const mode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value;
       directFields.classList.toggle('hidden', mode !== 'direct');
       footprintFields.classList.toggle('hidden', mode !== 'footprint');
-      pitchField.classList.toggle('hidden', mode !== 'footprint');
+      // Pitch is always shown: it drives the footprint->area conversion in
+      // "footprint" mode AND a steep-slope labor multiplier that applies
+      // regardless of area mode, so it can't be hidden just because the
+      // area-conversion use of it doesn't apply.
     }
 
     function updateTearoffVisibility() {
@@ -148,6 +152,8 @@ const HUB_LINKS = [
         document.getElementById('result-mid')!.textContent = currency.format(result.mid);
         document.getElementById('result-high')!.textContent = currency.format(result.high);
         document.getElementById('bd-material')!.textContent = currency.format(result.lineItems.materialCost);
+        document.getElementById('bd-pitch-surcharge')!.textContent = currency.format(result.lineItems.pitchSurchargeCost);
+        document.getElementById('bd-pitch-surcharge-row')!.classList.toggle('hidden', result.lineItems.pitchSurchargeCost <= 0);
         document.getElementById('bd-tearoff')!.textContent = currency.format(result.lineItems.tearOffCost);
         document.getElementById('bd-underlayment')!.textContent = currency.format(result.lineItems.underlaymentCost);
         document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
@@ -202,6 +208,9 @@ const HUB_LINKS = [
         `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft (${result.squares} squares)`,
         '',
         `Material & Install: ${currency.format(result.lineItems.materialCost)}`,
+        ...(result.lineItems.pitchSurchargeCost > 0
+          ? [`Steep-Pitch Labor Surcharge: ${currency.format(result.lineItems.pitchSurchargeCost)}`]
+          : []),
         `Tear-Off: ${currency.format(result.lineItems.tearOffCost)}`,
         `Underlayment: ${currency.format(result.lineItems.underlaymentCost)}`,
         `Subtotal: ${currency.format(result.subtotal)}`,
@@ -298,7 +307,7 @@ const HUB_LINKS = [
           </div>
         </div>
 
-        <div id="pitch-field" class="hidden">
+        <div id="pitch-field">
           <label for="pitch" class="block text-sm font-medium text-ink">Roof Pitch</label>
           <select
             id="pitch"
@@ -409,6 +418,12 @@ const HUB_LINKS = [
                 {defaultResult.lineItems.materialCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
               </td>
             </tr>
+            <tr id="bd-pitch-surcharge-row" class:list={["border-b border-hairline", { hidden: defaultResult.lineItems.pitchSurchargeCost <= 0 }]}>
+              <td class="py-2 text-body">Steep-pitch labor surcharge</td>
+              <td id="bd-pitch-surcharge" class="tabular-nums py-2 text-right text-ink">
+                {defaultResult.lineItems.pitchSurchargeCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+              </td>
+            </tr>
             <tr class="border-b border-hairline">
               <td class="py-2 text-body">Tear-Off</td>
               <td id="bd-tearoff" class="tabular-nums py-2 text-right text-ink">
@@ -472,15 +487,17 @@ const HUB_LINKS = [
     <p class="mt-4 text-body">
       This calculator prices your roof the way a contractor does. It starts with roof area, converts
       that area into &ldquo;squares&rdquo; (the roofing industry&rsquo;s standard unit of 100 square
-      feet), then applies a per-square material rate, a tear-off rate, an underlayment rate, and a
-      regional labor multiplier. If you don&rsquo;t know your exact roof area, switch to &ldquo;Estimate
-      from home size&rdquo; and enter your home&rsquo;s total square footage and number of stories.
-      The calculator divides by stories to approximate your footprint, then applies a pitch-based
-      multiplier (derived from basic roof geometry) to convert that flat footprint into actual sloped
-      roof surface area. A steeper pitch always produces more roof surface than the same footprint on
-      a shallow roof, so pitch affects the area calculation whenever you estimate from your home's
-      footprint. If you enter your roof's measured area directly instead, pitch doesn't change your
-      price, since there's no footprint left to convert.
+      feet), then applies a per-square material rate, a per-square steep-pitch labor surcharge, a
+      tear-off rate, an underlayment rate, and a regional labor multiplier. If you don&rsquo;t know your
+      exact roof area, switch to &ldquo;Estimate from home size&rdquo; and enter your home&rsquo;s
+      total square footage and number of stories. The calculator divides by stories to approximate
+      your footprint, then applies a pitch-based geometry factor to convert that flat footprint into
+      actual sloped roof surface area. A steeper pitch always produces more roof surface than the
+      same footprint on a shallow roof, so pitch affects the area calculation whenever you estimate
+      from your home&rsquo;s footprint. Pitch also affects price directly: steep and very steep roofs
+      (8/12 and up) carry a sourced labor surcharge for the harnesses, staging, and slower work
+      steep-slope crews require, and that surcharge applies whether you enter your roof&rsquo;s
+      measured area directly or estimate it from your home&rsquo;s footprint.
     </p>
     <p class="mt-4 text-body">
       The calculator prices material per square. Tear-off cost scales with how many old layers the
@@ -489,27 +506,70 @@ const HUB_LINKS = [
       the base material rate, to a synthetic or ice-and-water-shield underlayment. {REGIONAL_DISCLAIMER}
     </p>
 
-    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Rate Sources</h2>
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Methodology</h2>
     <p class="mt-4 text-body">
-      Every cost figure on this page is quoted from one of the live sources below, checked {DATE_PUBLISHED}.
-      Where no reliable source could be verified for an adjustment, the value is left at neutral
-      instead of being shown as sourced; see the sections above for which adjustments that applies to.
+      Every number this calculator outputs traces back to a named, checkable source. Where more than
+      one live source publishes comparable data for the same adjustment, we blend them by taking the
+      mean rather than picking whichever number is easiest to defend; where only one source publishes
+      usable data, we say so; where a source was checked and didn&rsquo;t hold up, we name it and
+      explain why it was excluded instead of quietly leaving it out.
     </p>
-    <ul class="mt-4 list-disc space-y-2 pl-6 text-body">
-      <li>
-        <strong>Material cost per square</strong> (asphalt, wood shake, metal, concrete/clay
-        tile, natural slate): <a href="https://www.roofcalc.org/" class="text-link underline hover:text-link-deep">roofcalc.org</a>, checked {DATE_PUBLISHED}.
-      </li>
-      <li>
-        <strong>Tear-off cost per layer</strong>: <a href="https://squaredash.com/cost/tear-off/" class="text-link underline hover:text-link-deep">squaredash.com/cost/tear-off/</a>, checked {DATE_PUBLISHED}.
-      </li>
-      <li>
-        <strong>Underlayment upgrade cost</strong>: <a href="https://www.fixr.com/costs/roof-underlayment-replacement" class="text-link underline hover:text-link-deep">fixr.com/costs/roof-underlayment-replacement</a>, checked {DATE_PUBLISHED}.
-      </li>
-      <li>
-        <strong>Regional labor multipliers</strong> (Pacific, West South Central): <a href="https://www.roofcalc.org/regional-roofing-price-adjustments-in-us/" class="text-link underline hover:text-link-deep">roofcalc.org/regional-roofing-price-adjustments-in-us</a>, checked {DATE_PUBLISHED}.
-      </li>
-    </ul>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Material &amp; Install Rates</h3>
+    <p class="mt-2 text-body">
+      Asphalt, wood shake, metal, concrete/clay tile, and natural slate cost-per-square figures are
+      quoted directly from <a href="https://www.roofcalc.org/" class="text-link underline hover:text-link-deep">roofcalc.org</a>&rsquo;s
+      published installation price table. Single-sourced; checked {DATE_PUBLISHED}.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Regional Labor Adjustment &mdash; Blend of 1 Source, 2 of 8 Regions Averaged Across Sub-Regions</h3>
+    <p class="mt-2 text-body">
+      We checked three sources for regional cost data: <a href="https://www.roofcalc.org/regional-roofing-price-adjustments-in-us/" class="text-link underline hover:text-link-deep">roofcalc.org</a>,
+      homewyse.com, and fixr.com. Only roofcalc.org publishes a clean, directly comparable percentage
+      adjustment for all nine U.S. Census regions, so every region multiplier below is single-sourced
+      to it. homewyse.com&rsquo;s roofing calculators require an interactive ZIP code and return no
+      static per-region figure, so no usable data could be pulled from it. fixr.com publishes
+      per-state cost pages, but each one uses a different baseline roof size and roof type (a 2,000
+      sq ft cross-gable in Ohio, a 1,700 sq ft roof in Florida, a 3,000 sq ft roof in Maryland), so
+      normalizing those into one comparable percentage would manufacture precision the source
+      doesn&rsquo;t support; we excluded it rather than force a fit. Two of our eight region buckets
+      (Northeast, Midwest) are wider than roofcalc.org&rsquo;s own regions, so those two multipliers
+      are the mean of roofcalc.org&rsquo;s own constituent sub-regions &mdash; e.g. Northeast averages
+      roofcalc.org&rsquo;s New England (+7.37%) and Mid Atlantic (+6.67%) figures. The remaining six
+      buckets, including East South Central (KY, TN, MS, AL), map 1:1 to a single roofcalc.org region
+      each. Checked {DATE_PUBLISHED}.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Pitch Labor Adjustment</h3>
+    <p class="mt-2 text-body">
+      <a href="https://www.squaredash.com/cost/labor/" class="text-link underline hover:text-link-deep">squaredash.com/cost/labor/</a> states
+      steep roofs (8/12 and up) run $200&ndash;$275 per square in labor against $150&ndash;$175 per
+      square for a walkable roof. The steep-pitch surcharge is that source's steep midpoint minus its
+      walkable midpoint ($237.50 - $162.50 = $75/sq), charged as a flat per-square amount rather than a
+      multiplier, since our material rates are already installed (material + labor) prices and
+      multiplying an installed rate by a labor-only ratio would double-count labor and scale the
+      surcharge with material price instead of with the actual difficulty of the work. This surcharge
+      is shown as its own &ldquo;Steep-pitch labor surcharge&rdquo; line item and applies only to
+      material &amp; install labor, not to tear-off or underlayment, since no source supports a
+      steep-slope premium on those tasks. Single-sourced; checked {DATE_PUBLISHED}. This is separate
+      from, and stacks with, the geometric factor that converts a footprint into sloped roof area,
+      which is unsourced basic trigonometry rather than a cost claim.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Tear-Off &amp; Underlayment</h3>
+    <p class="mt-2 text-body">
+      Tear-off cost per layer: <a href="https://squaredash.com/cost/tear-off/" class="text-link underline hover:text-link-deep">squaredash.com/cost/tear-off/</a>.
+      Underlayment upgrade cost: <a href="https://www.fixr.com/costs/roof-underlayment-replacement" class="text-link underline hover:text-link-deep">fixr.com/costs/roof-underlayment-replacement</a>.
+      Both single-sourced; checked {DATE_PUBLISHED}.
+    </p>
+
+    <p class="mt-6 text-sm text-mute">
+      Methodology last updated {DATE_PUBLISHED}. Every rate, blend, and exclusion above lives as a
+      <code class="font-mono-caption text-xs">sourceNote</code> next to its value in this
+      site&rsquo;s underlying rate data. Found a source that&rsquo;s gone stale or a blend you think
+      is wrong? <a href="/contact/" class="text-link underline hover:text-link-deep">Contact us</a>
+      with the page and the number.
+    </p>
 
     <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">What Drives Roof Replacement Cost</h2>
     <p class="mt-4 text-body">
@@ -528,13 +588,14 @@ const HUB_LINKS = [
     <p class="mt-4 text-body">
       <strong>Roof pitch</strong> affects how much material you need, since steeper roofs have more
       surface area per square foot of footprint. Steep-slope work is also slower and needs more
-      safety equipment in the real world, but this calculator doesn&rsquo;t add a separate charge for
-      that yet, since no reliable published source states exactly how much it should be. See
+      safety equipment in the real world, and this calculator adds a sourced labor surcharge for
+      steep and very steep roofs (8/12 and up) on top of that extra material. See
       <a href="/blog/roof-pitch-cost-impact/" class="text-link underline hover:text-link-deep">how roof pitch affects replacement cost</a>
-      for the geometry behind that adjustment.
+      for the full breakdown.
       <strong>Region</strong> captures differences in labor rates, permitting fees, and disposal
-      costs across the country, though only two of seven regions carry a verified adjustment today;
-      the rest sit at national parity until a citable source turns up. Finally,
+      costs across the country; seven of the eight regions carry a verified adjustment sourced from
+      published regional cost data, with National Average serving as the baseline those seven are
+      measured against. Finally,
       <strong>roof complexity</strong> (valleys, dormers, chimneys, skylights, and steep cuts) adds
       labor time a simple square-footage calculation can&rsquo;t fully capture. Complex rooflines are
       why contractor bids often land above a size-only estimate.
@@ -613,6 +674,7 @@ const HUB_LINKS = [
       title={title}
       authorName={ORGANIZATION.name}
       datePublished={DATE_PUBLISHED}
+      url={new URL(PAGE_PATH, Astro.site).href}
     />
   </section>
 
@@ -626,7 +688,7 @@ const HUB_LINKS = [
           <summary class="cursor-pointer list-none text-base font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
             {faq.question}
           </summary>
-          <p class="mt-2 text-sm text-body" set:html={faq.answer} />
+          <p class="mt-2 text-sm text-body" set:html={faq.answerHtml ?? faq.answer} />
         </details>
       ))}
     </div>

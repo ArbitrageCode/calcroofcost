@@ -64,6 +64,7 @@ export function roundTo50(n: number): number {
 
 export interface LineItems {
   materialCost: number;
+  pitchSurchargeCost: number;
   tearOffCost: number;
   underlaymentCost: number;
 }
@@ -101,7 +102,7 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
     return {
       roofAreaSqft: 0,
       squares: 0,
-      lineItems: { materialCost: 0, tearOffCost: 0, underlaymentCost: 0 },
+      lineItems: { materialCost: 0, pitchSurchargeCost: 0, tearOffCost: 0, underlaymentCost: 0 },
       subtotal: 0,
       mid: 0,
       low: 0,
@@ -112,7 +113,8 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
 
   const squares = roofAreaSqft / 100;
 
-  const materialCost = roundTo50(squares * material.costPerSquare * pitch.multiplier * region.multiplier);
+  const materialCost = roundTo50(squares * material.costPerSquare * region.multiplier);
+  const pitchSurchargeCost = roundTo50(squares * pitch.laborSurchargePerSquare * region.multiplier);
   const tearOffCost = roundTo50(
     inputs.tearOffLayers > 0
       ? squares * TEAR_OFF_COST_PER_SQUARE_BY_LAYERS[inputs.tearOffLayers] * region.multiplier
@@ -122,7 +124,7 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
     inputs.underlayment ? squares * UNDERLAYMENT_UPGRADE_COST_PER_SQUARE * region.multiplier : 0,
   );
 
-  const subtotal = materialCost + tearOffCost + underlaymentCost;
+  const subtotal = materialCost + pitchSurchargeCost + tearOffCost + underlaymentCost;
   const mid = subtotal;
   const low = roundTo50(mid * ESTIMATE_SPREAD.low);
   const high = roundTo50(mid * ESTIMATE_SPREAD.high);
@@ -132,6 +134,7 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
     squares: Math.round(squares * 100) / 100,
     lineItems: {
       materialCost,
+      pitchSurchargeCost,
       tearOffCost,
       underlaymentCost,
     },

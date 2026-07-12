@@ -7,7 +7,10 @@ export interface BreadcrumbItem {
 
 export interface FaqItem {
   question: string;
+  /** Plain text only — used verbatim in JSON-LD, where markup (including relative <a href>) is invalid. */
   answer: string;
+  /** Optional rendered version with markup, shown in the on-page <details>. Falls back to `answer` if omitted. */
+  answerHtml?: string;
 }
 
 function abs(site: URL | string, path: string): string {
