@@ -16,8 +16,7 @@ export type MaterialKey =
   | 'asphalt'
   | 'metal'
   | 'wood'
-  | 'clayTile'
-  | 'concreteTile'
+  | 'tile'
   | 'slate';
 
 export interface MaterialRate {
@@ -29,54 +28,48 @@ export interface MaterialRate {
   sourceNote: string;
 }
 
-// Materials sorted cheapest to most expensive.
+// Materials sorted cheapest to most expensive. All costPerSquare figures below
+// are quoted from the same live pricing table on the roofcalc.org homepage
+// ("Installation prices for most popular roofing materials in US:"),
+// https://www.roofcalc.org/, checked 2026-07-12.
 export const MATERIALS: MaterialRate[] = [
   {
     key: 'asphalt',
     label: 'Asphalt Shingles (Architectural)',
     costPerSquare: 356,
     lifespanYears: [20, 30],
-    sourceNote: 'roofcalc.org, architectural shingles: "$5,312 ($356 per square)"',
+    sourceNote: 'https://www.roofcalc.org/, "Architectural Shingles: $5,312 ($356 per square)"',
   },
   {
     key: 'wood',
     label: 'Wood Shake / Shingle',
     costPerSquare: 777,
     lifespanYears: [25, 30],
-    sourceNote: 'roofcalc.org, cedar shakes: "$11,571 ($777 per square)"',
+    sourceNote: 'https://www.roofcalc.org/, "Cedar Shingles or Shakes: $11,571 ($777 per square)"',
   },
   {
     key: 'metal',
     label: 'Metal (Standing Seam)',
     costPerSquare: 821,
     lifespanYears: [40, 70],
-    sourceNote: 'roofcalc.org, standing seam: "$12,234 ($821 per square)"',
+    sourceNote: 'https://www.roofcalc.org/, "Standing Seam Metal Roof: $12,234 ($821 per square)"',
   },
   {
-    key: 'concreteTile',
-    label: 'Concrete Tile',
+    key: 'tile',
+    label: 'Concrete / Clay Tile',
     costPerSquare: 909,
-    lifespanYears: [40, 50],
     // roofcalc.org prices clay and concrete tile as a single combined figure
-    // and does not publish a split. No other source could be fetched and
-    // verified live to justify a different number for concrete specifically,
-    // so this matches the clay tile rate below rather than presenting an
-    // invented differential as sourced.
-    sourceNote: 'roofcalc.org, clay/concrete tile (combined): "$13,544 ($909 per square)"',
-  },
-  {
-    key: 'clayTile',
-    label: 'Clay Tile',
-    costPerSquare: 909,
-    lifespanYears: [50, 100],
-    sourceNote: 'roofcalc.org, clay/concrete tile (combined): "$13,544 ($909 per square)"',
+    // and does not publish a split, so this is one merged option rather than
+    // two options that would otherwise produce identical output.
+    lifespanYears: [40, 100],
+    sourceNote: 'https://www.roofcalc.org/, "Clay/Concrete Tile Roof: $13,544 ($909 per square)"',
   },
   {
     key: 'slate',
     label: 'Natural Slate',
     costPerSquare: 1164,
     lifespanYears: [75, 150],
-    sourceNote: 'roofcalc.org, natural slate: "$17,344 ($1,164 per square)"',
+    sourceNote: 'https://www.roofcalc.org/, "Natural Slate: $17,344 ($1,164 per square)"',
   },
 ];
 
@@ -87,25 +80,25 @@ export function getMaterial(key: MaterialKey): MaterialRate {
 }
 
 // Tear-off cost per square, by number of existing layers removed.
-// Source: squaredash.com/cost/tear-off/ publishes a per-layer table:
-// 1 layer "$1.00 - $1.25" per sq ft, 2 layers "$1.25 - $1.75" per sq ft.
-// Values below are the midpoint of that source's own stated range for each
-// tier ($112.50/sq -> 115, $150/sq -> 150). The same page states most
-// jurisdictions legally cap roofs at two layers and does not publish a
-// 3-layer figure; the 3-layer value continues that source's own per-layer
-// increment ($150 + $37.50) rather than presenting a fabricated citation.
-export const TEAR_OFF_COST_PER_SQUARE_BY_LAYERS: Record<1 | 2 | 3, number> = {
+// Source: https://squaredash.com/cost/tear-off/, checked 2026-07-12, publishes
+// a per-layer table: 1 layer "$1.00 - $1.25" per sq ft, 2 layers "$1.25 -
+// $1.75" per sq ft. Values below are the midpoint of that source's own stated
+// range for each tier ($112.50/sq -> 115, $150/sq -> 150). The same page
+// states most jurisdictions legally prohibit more than two layers and does
+// not publish a 3-layer figure, so this calculator caps at two layers rather
+// than presenting an extrapolated figure as sourced.
+export const TEAR_OFF_COST_PER_SQUARE_BY_LAYERS: Record<1 | 2, number> = {
   1: 115,
   2: 150,
-  3: 188,
 };
 
 // Underlayment upgrade cost per square (basic felt -> synthetic/ice-and-water shield).
-// Source: fixr.com/costs/roof-underlayment-replacement states material costs
-// of "$0.05 - $0.50" per sq ft for felt and "$0.75 to $0.90" per sq ft for
-// ice-and-water shield. Value below is that source's ice-and-water midpoint
-// ($82.50/sq) minus its felt midpoint ($27.50/sq), i.e. the incremental
-// upgrade cost, since felt is already priced into the base material rate.
+// Source: https://www.fixr.com/costs/roof-underlayment-replacement, checked
+// 2026-07-12, states material costs of "$0.05 - $0.50" per sq ft for felt and
+// "$0.75 to $0.90" per sq ft for ice-and-water shield. Value below is that
+// source's ice-and-water midpoint ($82.50/sq) minus its felt midpoint
+// ($27.50/sq), i.e. the incremental upgrade cost, since felt is already
+// priced into the base material rate.
 export const UNDERLAYMENT_UPGRADE_COST_PER_SQUARE = 55;
 
 // Roof pitch cost multipliers, applied to material + labor cost (not tear-off).
@@ -144,9 +137,11 @@ export function getPitchAdder(key: PitchKey): PitchRate {
 }
 
 // Regional labor cost multipliers, applied to the full project cost.
-// Only two regions have a verified live source: roofcalc.org states the
-// Pacific region (CA, OR, WA, AK) runs "18% more" than the National Average,
-// and the West South Central region (TX, LA, OK, AR) runs "16% less." RSMeans
+// Only two regions have a verified live source:
+// https://www.roofcalc.org/regional-roofing-price-adjustments-in-us/, checked
+// 2026-07-12, states the Pacific region (CA, OR, WA, AK) runs "+18.09%" vs.
+// the National Average, and the West South Central region (TX, LA, OK, AR)
+// runs "-16.18%." RSMeans
 // City Cost Index would be the authoritative source for the remaining
 // regions but is a paywalled product with no free live figures to fetch and
 // verify. Those five regions are flattened to 1.0 (no adjustment, same as

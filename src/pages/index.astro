@@ -9,7 +9,7 @@ import { calculate, DEFAULT_INPUTS } from '../lib/calculator';
 import { buildGraph, organizationNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
 
 const PAGE_PATH = '/';
-const DATE_PUBLISHED = '2026-07-03';
+const DATE_PUBLISHED = '2026-07-12';
 
 const title = 'Roof Replacement Cost Calculator (2026) | CalcRoofCost.com';
 const description =
@@ -342,7 +342,6 @@ const HUB_LINKS = [
             >
               <option value="1" selected={DEFAULT_INPUTS.tearOffLayers === 1}>1 Layer</option>
               <option value="2" selected={DEFAULT_INPUTS.tearOffLayers === 2}>2 Layers</option>
-              <option value="3" selected={DEFAULT_INPUTS.tearOffLayers === 3}>3 Layers</option>
             </select>
           </div>
         </div>
@@ -498,17 +497,17 @@ const HUB_LINKS = [
     </p>
     <ul class="mt-4 list-disc space-y-2 pl-6 text-body">
       <li>
-        <strong>Material cost per square</strong> (asphalt, wood shake, metal, concrete tile, clay
-        tile, natural slate): <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>, checked {DATE_PUBLISHED}.
+        <strong>Material cost per square</strong> (asphalt, wood shake, metal, concrete/clay
+        tile, natural slate): <a href="https://www.roofcalc.org/" class="text-link underline hover:text-link-deep">roofcalc.org</a>, checked {DATE_PUBLISHED}.
       </li>
       <li>
         <strong>Tear-off cost per layer</strong>: <a href="https://squaredash.com/cost/tear-off/" class="text-link underline hover:text-link-deep">squaredash.com/cost/tear-off/</a>, checked {DATE_PUBLISHED}.
       </li>
       <li>
-        <strong>Underlayment upgrade cost</strong>: <a href="https://fixr.com/costs/roof-underlayment-replacement" class="text-link underline hover:text-link-deep">fixr.com/costs/roof-underlayment-replacement</a>, checked {DATE_PUBLISHED}.
+        <strong>Underlayment upgrade cost</strong>: <a href="https://www.fixr.com/costs/roof-underlayment-replacement" class="text-link underline hover:text-link-deep">fixr.com/costs/roof-underlayment-replacement</a>, checked {DATE_PUBLISHED}.
       </li>
       <li>
-        <strong>Regional labor multipliers</strong> (Pacific, West South Central): <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>, checked {DATE_PUBLISHED}.
+        <strong>Regional labor multipliers</strong> (Pacific, West South Central): <a href="https://www.roofcalc.org/regional-roofing-price-adjustments-in-us/" class="text-link underline hover:text-link-deep">roofcalc.org/regional-roofing-price-adjustments-in-us</a>, checked {DATE_PUBLISHED}.
       </li>
     </ul>
 
@@ -520,7 +519,7 @@ const HUB_LINKS = [
       run three to four times the total project cost on an identical roof.
     </p>
     <p class="mt-4 text-body">
-      <strong>Tear-off and layers</strong> matter because a roof with two or three layers of old
+      <strong>Tear-off and layers</strong> matter because a roof with two layers of old
       shingles takes longer to strip, generates more debris to haul away, and often reveals decking
       issues invisible from the ground. <strong>Underlayment</strong> is a smaller line item but a
       real one, especially in climates with ice damming or wind-driven rain, where a synthetic or
@@ -550,8 +549,8 @@ const HUB_LINKS = [
       math. Metal roofing changes the math: a {MATERIALS[2].lifespanYears[0]}-{MATERIALS[2].lifespanYears[1]}-year lifespan means most metal roofs outlast
       the mortgage on the house they cover, and many insurers discount premiums for impact-resistant
       metal panels; see our <a href="/blog/metal-vs-asphalt-roof-cost-comparison/" class="text-link underline hover:text-link-deep">metal vs. asphalt cost comparison</a>
-      for the full numbers. Concrete and clay tile push further still, lasting {MATERIALS[3].lifespanYears[0]}-{MATERIALS[4].lifespanYears[1]} years
-      when the structure underneath can carry the added weight. Natural slate is the outlier at {MATERIALS[5].lifespanYears[0]}-{MATERIALS[5].lifespanYears[1]} years; a well-maintained slate roof can outlast the house around it. Divide
+      for the full numbers. Concrete and clay tile push further still, lasting {MATERIALS[3].lifespanYears[0]}-{MATERIALS[3].lifespanYears[1]} years
+      when the structure underneath can carry the added weight. Natural slate is the outlier at {MATERIALS[4].lifespanYears[0]}-{MATERIALS[4].lifespanYears[1]} years; a well-maintained slate roof can outlast the house around it. Divide
       total installed cost by expected lifespan years and the annualized gap between materials
       narrows, even though the sticker price does not.
     </p>

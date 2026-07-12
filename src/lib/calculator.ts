@@ -14,7 +14,7 @@ import {
 } from '../data/rates';
 
 export type AreaMode = 'direct' | 'footprint';
-export type TearOffLayers = 0 | 1 | 2 | 3;
+export type TearOffLayers = 0 | 1 | 2;
 
 export interface CalculatorInputs {
   areaMode: AreaMode;
@@ -97,7 +97,7 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
     roofAreaSqft = footprintSqft * pitchAreaFactor(inputs.pitch);
   }
 
-  if (roofAreaSqft <= 0 || roofAreaSqft > MAX_ROOF_AREA_SQFT) {
+  if (roofAreaSqft < MIN_ROOF_AREA_SQFT || roofAreaSqft > MAX_ROOF_AREA_SQFT) {
     return {
       roofAreaSqft: 0,
       squares: 0,
@@ -112,17 +112,18 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
 
   const squares = roofAreaSqft / 100;
 
-  const materialCost = squares * material.costPerSquare * pitch.multiplier;
-  const tearOffCost =
+  const materialCost = roundTo50(squares * material.costPerSquare * pitch.multiplier * region.multiplier);
+  const tearOffCost = roundTo50(
     inputs.tearOffLayers > 0
-      ? squares * TEAR_OFF_COST_PER_SQUARE_BY_LAYERS[inputs.tearOffLayers]
-      : 0;
-  const underlaymentCost = inputs.underlayment
-    ? squares * UNDERLAYMENT_UPGRADE_COST_PER_SQUARE
-    : 0;
+      ? squares * TEAR_OFF_COST_PER_SQUARE_BY_LAYERS[inputs.tearOffLayers] * region.multiplier
+      : 0,
+  );
+  const underlaymentCost = roundTo50(
+    inputs.underlayment ? squares * UNDERLAYMENT_UPGRADE_COST_PER_SQUARE * region.multiplier : 0,
+  );
 
   const subtotal = materialCost + tearOffCost + underlaymentCost;
-  const mid = roundTo50(subtotal * region.multiplier);
+  const mid = subtotal;
   const low = roundTo50(mid * ESTIMATE_SPREAD.low);
   const high = roundTo50(mid * ESTIMATE_SPREAD.high);
 
@@ -130,11 +131,11 @@ export function calculate(inputs: CalculatorInputs): CalculatorResult {
     roofAreaSqft: Math.round(roofAreaSqft),
     squares: Math.round(squares * 100) / 100,
     lineItems: {
-      materialCost: roundTo50(materialCost * region.multiplier),
-      tearOffCost: roundTo50(tearOffCost * region.multiplier),
-      underlaymentCost: roundTo50(underlaymentCost * region.multiplier),
+      materialCost,
+      tearOffCost,
+      underlaymentCost,
     },
-    subtotal: roundTo50(subtotal * region.multiplier),
+    subtotal,
     mid,
     low,
     high,
@@ -184,7 +185,7 @@ export function decodeInputs(searchParams: URLSearchParams): CalculatorInputs {
     pitch: pitch && VALID_PITCHES.has(pitch as PitchKey)
       ? (pitch as PitchKey)
       : DEFAULT_INPUTS.pitch,
-    tearOffLayers: ([0, 1, 2, 3] as const).includes(tearoff as TearOffLayers)
+    tearOffLayers: ([0, 1, 2] as const).includes(tearoff as TearOffLayers)
       ? (tearoff as TearOffLayers)
       : DEFAULT_INPUTS.tearOffLayers,
     underlayment: searchParams.get('underlayment')
