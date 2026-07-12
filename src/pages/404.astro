@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const title = 'Page Not Found | CalcRoofCost.com';
+const description = 'The page you were looking for could not be found.';
+---
+
+<BaseLayout title={title} description={description} noindex>
+  <section class="mx-auto flex max-w-2xl flex-col items-start px-4 py-24 sm:px-6">
+    <p class="text-sm font-medium text-mute">404</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">Page not found</h1>
+    <p class="mt-4 text-body">
+      The page you&rsquo;re looking for doesn&rsquo;t exist or may have moved. Try the roof cost
+      calculator, or browse recent articles below.
+    </p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <a
+        href="/"
+        class="rounded-full bg-ink px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+      >
+        Go to Calculator
+      </a>
+      <a
+        href="/blog/"
+        class="rounded-full border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+      >
+        Visit the Blog
+      </a>
+    </div>
+  </section>
+</BaseLayout>

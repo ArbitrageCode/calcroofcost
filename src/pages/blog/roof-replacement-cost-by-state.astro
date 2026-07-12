@@ -1,0 +1,122 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getBlogPost } from '../../data/blogPosts';
+import { REGIONS, REGIONAL_DISCLAIMER } from '../../data/rates';
+import { calculate, DEFAULT_INPUTS } from '../../lib/calculator';
+import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+
+const post = getBlogPost('roof-replacement-cost-by-state');
+const PAGE_PATH = `/blog/${post.slug}/`;
+const title = `${post.title} | CalcRoofCost.com`;
+
+const jsonLd = buildGraph([
+  personNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: post.title,
+    description: post.description,
+    datePublished: post.datePublished,
+  }),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Blog', path: '/blog/' },
+    { name: post.title, path: PAGE_PATH },
+  ]),
+]);
+
+// Same 2,000 sq ft asphalt scenario used in the homepage worked example,
+// run once per region through the real calculator so every figure here
+// matches src/data/rates.ts exactly, automatically, if either ever changes.
+const regionExamples = REGIONS.map((r) => ({
+  ...r,
+  result: calculate({ ...DEFAULT_INPUTS, region: r.key }),
+}));
+
+const national = regionExamples.find((r) => r.key === 'national')!;
+const pacific = regionExamples.find((r) => r.key === 'pacific')!;
+const westSouthCentral = regionExamples.find((r) => r.key === 'west_south_central')!;
+const gap = pacific.result.mid - westSouthCentral.result.mid;
+
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+---
+
+<BaseLayout title={title} description={post.description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <p class="text-sm text-mute">{post.datePublished}</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
+
+    <p class="mt-6 text-body">
+      A 2,000-square-foot asphalt roof costs {usd(westSouthCentral.result.mid)} in Amarillo, Texas. The identical roof, same shingles, same three-day crew, costs {usd(pacific.result.mid)} in Sacramento. A {usd(gap)} gap on a job with zero material difference. The cause is where the crew clocks in. Our
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">roof replacement cost calculator</a>
+      builds that gap into a Region dropdown, though right now only two of the seven regions carry a verified adjustment. Here's why, and what to do about the other five.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Why Labor Costs Move by Region</h2>
+    <p class="mt-4 text-body">
+      Roofers price their time the way every trade does: against the local labor market. A crew in the Bay Area quotes higher hourly rates than a crew in rural Oklahoma, because rent, insurance, and competing wages all run higher there. Building codes stack on top of that. California requires Class A fire-rated roofing assemblies in wildfire zones, which raises material and labor cost together. Coastal Florida and the Carolinas require wind-rated fastening patterns after Hurricane Andrew rewrote the building code in 1992. The Upper Midwest requires ice-and-water shield at the eaves, a line item that a roof in Phoenix never sees. None of these requirements show up in a generic per-square-foot number pulled from a national average.
+    </p>
+    <p class="mt-4 text-body">
+      Would a roofer in Denver actually charge the same as a roofer in Cleveland? Almost certainly not. But "almost certainly not" isn't good enough to put a number on. The two regions with a verified adjustment in this calculator, Pacific and West South Central, are anchored to a single live source that states an exact percentage. The other five, including Denver's Mountain region, sit at national parity here because no free, live source could be found and verified with a specific multiplier for them. RSMeans publishes exactly this kind of regional labor index, but it's a paid, licensed product with no public figures to cite. Until a citable source turns up, this calculator treats those five regions as unadjusted rather than guessing.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">The Multiplier, Region by Region</h2>
+    <p class="mt-4 text-body">
+      The table below runs each region's multiplier against the calculator's own {usd(national.result.mid)} national-average baseline: a 2,000 sq ft asphalt roof, moderate pitch, one layer of tear-off, and an underlayment upgrade. These are the same multipliers the calculator applies when you pick a region from the dropdown.
+    </p>
+
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">Region</th>
+            <th scope="col" class="py-2 text-right font-medium">Multiplier</th>
+            <th scope="col" class="py-2 text-right font-medium">Example Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {regionExamples.map((r) => (
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">{r.label}</td>
+              <td class="tabular-nums py-2 text-right text-ink">{r.multiplier.toFixed(2)}x</td>
+              <td class="tabular-nums py-2 text-right text-ink">
+                {usd(r.result.mid)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-xs text-mute">{REGIONAL_DISCLAIMER}</p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Five Regions, No Verified Adjustment Yet</h2>
+    <p class="mt-4 text-body">
+      Northeast, Mountain, Midwest, and South Atlantic all show the same {usd(national.result.mid)} as National Average in the table above, because each one currently carries a 1.00x multiplier. That's not a claim that Boston, Denver, Columbus, and Atlanta cost the same to roof. It's a disclosure that this calculator hasn't found a live, verifiable source for how much they differ. A homeowner in Boston sitting at national parity here, next to a homeowner in Columbus also at national parity, could easily see a real gap on their actual bids that this table doesn't capture at all. If your region shows a 1.00x multiplier, lean harder on local written quotes than on this calculator's regional adjustment, since that part of the tool is currently a placeholder for missing data, not a researched figure.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">One Region Hides Several Markets</h2>
+    <p class="mt-4 text-body">
+      Even the two verified regions flatten real differences inside themselves. Take the Pacific region. A contractor in San Francisco prices a job against San Francisco rent and San Francisco competitors. A contractor two hundred miles inland, in the Central Valley, prices against a different set of costs. Seattle runs closer to San Francisco than to the towns east of the Cascades. The regional number sits between both markets, so it lands somewhere neither one charges. Austin tells a similar story inside the low-cost West South Central region: roofing labor there has climbed faster than the Texas average for a decade, driven by a construction boom with no end date in sight. Pull a number from a region label. Confirm it against a contractor who works your zip code.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Storm Season Breaks the Model</h2>
+    <p class="mt-4 text-body">
+      A regional average assumes steady demand. Hurricanes and hailstorms erase that assumption overnight. When a Category 3 hurricane makes landfall in Florida, insurance claims absorb every roofing crew within driving distance within days, and homeowners waiting on a routine, non-emergency replacement compete for the same labor pool. Prices climb. Wait times stretch past three months in the worst seasons. The same pattern hits hail corridors through Texas, Oklahoma, and Nebraska every spring. A homeowner who schedules a fall or winter replacement instead of chasing a spring storm season pays a price closer to the baseline multiplier than the post-storm spike.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">How the Calculator Uses This Number</h2>
+    <p class="mt-4 text-body">
+      The calculator applies the region multiplier to material, tear-off, and underlayment as one combined subtotal. Select "National Average" and you get the baseline used throughout this site. Switch to Pacific or West South Central and the breakdown table shifts by that verified multiplier. A homeowner near the border of those two regions, say Kansas City, which straddles the Midwest and West South Central boundary, can run both and treat the {usd(national.result.mid - westSouthCentral.result.mid)} spread between them as a real planning range, since one side of that boundary carries an actual citation and the other currently doesn't move the number at all.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Using This to Budget</h2>
+    <p class="mt-4 text-body">
+      Treat the multiplier as a starting point for your budget, and treat a 1.00x region as no signal at all rather than good news. Run your roof through the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">calculator</a>
+      with your region selected, then collect two or three written bids from contractors licensed in your state. A bid that lands well above the calculator's High estimate tells you to ask questions: get that contractor to itemize labor, material, tear-off, and disposal, then find the line item driving the gap. Material choice compounds with region in ways that catch people off guard. Read
+      <a href="/blog/metal-vs-asphalt-roof-cost-comparison/" class="text-link underline hover:text-link-deep">our metal vs. asphalt comparison</a>
+      before you assume a low-cost region caps your total spend. A roof with premium metal panels in Oklahoma can cost more than a simple asphalt roof in coastal California, and a homeowner who checks the region dropdown alone before signing a contract misses that comparison.
+    </p>
+  </article>
+</BaseLayout>

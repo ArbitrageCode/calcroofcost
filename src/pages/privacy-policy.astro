@@ -1,0 +1,65 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { buildGraph, breadcrumbNode } from '../lib/schema';
+
+const title = 'Privacy Policy | CalcRoofCost.com';
+const description = 'How CalcRoofCost.com collects, uses, and protects information from site visitors.';
+const LAST_UPDATED = 'July 3, 2026';
+
+const jsonLd = buildGraph([
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Privacy Policy', path: '/privacy-policy/' },
+  ]),
+]);
+---
+
+<BaseLayout title={title} description={description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-2xl px-4 py-16 sm:px-6">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink">Privacy Policy</h1>
+    <p class="mt-2 text-sm text-mute">Last updated: {LAST_UPDATED}</p>
+
+    <h2 class="mt-8 text-lg font-semibold text-ink">Information We Collect</h2>
+    <p class="mt-2 text-body">
+      CalcRoofCost.com does not require an account and does not collect personal information to use
+      any calculator on this site. Calculator inputs (roof size, material, region, etc.) are
+      processed entirely in your browser and are never transmitted to our servers. If you choose to
+      use the &ldquo;Share Result&rdquo; feature, your inputs are encoded into the URL you share
+      &mdash; we don&rsquo;t store that link or its contents anywhere.
+    </p>
+
+    <h2 class="mt-8 text-lg font-semibold text-ink">Analytics</h2>
+    <p class="mt-2 text-body">
+      We use Google Analytics (GA4) to understand aggregate traffic patterns, such as which pages are
+      visited and which calculators are used most. GA4 uses cookies and similar technologies and may
+      collect information such as your IP address, browser type, and device type. You can opt out of
+      Google Analytics tracking using a browser extension such as the Google Analytics Opt-out
+      Browser Add-on.
+    </p>
+
+    <h2 class="mt-8 text-lg font-semibold text-ink">Contact Forms and Email</h2>
+    <p class="mt-2 text-body">
+      If you email us directly, we retain that correspondence only as long as needed to respond to
+      and resolve your inquiry.
+    </p>
+
+    <h2 class="mt-8 text-lg font-semibold text-ink">Third-Party Links</h2>
+    <p class="mt-2 text-body">
+      This site may link to third-party resources and sources cited in our methodology. We are not
+      responsible for the privacy practices of external sites.
+    </p>
+
+    <h2 class="mt-8 text-lg font-semibold text-ink">Changes to This Policy</h2>
+    <p class="mt-2 text-body">
+      We may update this policy from time to time. Material changes will be reflected by an updated
+      &ldquo;Last updated&rdquo; date at the top of this page.
+    </p>
+
+    <h2 class="mt-8 text-lg font-semibold text-ink">Contact</h2>
+    <p class="mt-2 text-body">
+      Questions about this policy can be sent to the address on our <a href="/contact/" class="text-link underline hover:text-link-deep">Contact page</a>.
+    </p>
+  </article>
+</BaseLayout>

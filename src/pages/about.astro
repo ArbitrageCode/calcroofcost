@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { AUTHOR } from '../data/author';
+import { buildGraph, personNode, breadcrumbNode } from '../lib/schema';
+
+const title = 'About | CalcRoofCost.com';
+const description =
+  'CalcRoofCost.com builds free, transparent roofing and home-improvement cost calculators, backed by researched cost data and clear methodology.';
+
+const jsonLd = buildGraph([
+  personNode(Astro.site!),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'About', path: '/about/' },
+  ]),
+]);
+---
+
+<BaseLayout title={title} description={description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink">About CalcRoofCost.com</h1>
+
+    <p class="mt-6 text-body">
+      CalcRoofCost.com builds free, single-purpose cost calculators for home improvement projects,
+      starting with roof replacement. Every calculator on this site is built the same way: a
+      published, sourced rate table drives the math, the methodology is explained in plain language
+      on the page, and every number in the result is broken out into a line item you can check
+      against your own contractor quotes.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Our Approach to Cost Data</h2>
+    <p class="mt-4 text-body">
+      Cost estimates are synthesized from published industry sources rather than a single vendor
+      quote engine, and every rate carries a source note in the underlying data file. We treat every
+      figure as a planning estimate, not a substitute for an on-site contractor quote &mdash; local
+      material availability, labor market conditions, and roof-specific complexity can all move the
+      real number away from any calculator&rsquo;s estimate.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Author</h2>
+    <div class="mt-4 rounded-lg border border-hairline bg-canvas p-6">
+      <p class="font-medium text-ink">{AUTHOR.name}</p>
+      <p class="text-sm text-mute">{AUTHOR.jobTitle}</p>
+      <p class="mt-3 text-sm text-body">{AUTHOR.description}</p>
+    </div>
+  </article>
+</BaseLayout>

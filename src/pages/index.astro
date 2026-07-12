@@ -1,11 +1,613 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTASlot from '../components/CTASlot.astro';
+import CitePage from '../components/CitePage.astro';
+import ShareResult from '../components/ShareResult.astro';
+import { MATERIALS, PITCH_ADDERS, REGIONS, REGIONAL_DISCLAIMER } from '../data/rates';
+import { AUTHOR } from '../data/author';
+import { calculate, DEFAULT_INPUTS } from '../lib/calculator';
+import { buildGraph, personNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const PAGE_PATH = '/';
+const DATE_PUBLISHED = '2026-07-03';
+
+const title = 'Roof Replacement Cost Calculator (2026) | CalcRoofCost.com';
+const description =
+  'Estimate your roof replacement cost in seconds. Enter your roof size or home footprint, pick a material, and get an instant Low/Mid/High price breakdown by region.';
+
+const defaultResult = calculate(DEFAULT_INPUTS);
+
+const FAQS = [
+  {
+    question: 'How much does it cost to replace a roof on average?',
+    answer:
+      "You'll spend between $8,950 and $12,050 to replace an asphalt shingle roof on a 2,000 sq ft home at national-average pricing, with size, material, tear-off requirements, and regional labor rates all moving that number. Premium materials like metal, tile, or slate can push the cost well above $20,000.",
+  },
+  {
+    question: 'What is the cheapest roofing material?',
+    answer:
+      'Asphalt shingles are the least expensive roofing material to install, in both material cost per square and labor complexity. Wood shake sits in the next tier up, followed by metal, then concrete and clay tile, with natural slate at the premium end.',
+  },
+  {
+    question: 'How long does a roof replacement take?',
+    answer:
+      'A straightforward asphalt shingle tear-off and replacement on an average single-family home takes one to three days. Steeper pitches, multiple tear-off layers, complex rooflines, or premium materials like tile and slate can extend the timeline to a week or more.',
+  },
+  {
+    question: 'Does homeowners insurance cover roof replacement?',
+    answer:
+      "Coverage depends on your policy and the cause of damage. Most policies cover sudden, covered perils like hail, wind, or fire, often minus your deductible, but exclude gradual wear, age-related deterioration, and lack of maintenance. Read your policy language, or get an adjuster inspection, before you assume coverage either way.",
+  },
+  {
+    question: 'How often should roof underlayment be replaced?',
+    answer:
+      'Your roofer replaces underlayment every time they tear off and redo the roof covering, since removal disturbs the layer sitting directly beneath the shingles or panels. Standalone underlayment failure between full replacements is uncommon but can happen with older felt underlayment exposed to prolonged moisture.',
+  },
+  {
+    question: 'How do I know if I need a full roof replacement instead of a repair?',
+    answer:
+      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See the Repair vs. Replace section below for a full breakdown.',
+  },
+];
+
+const jsonLd = buildGraph([
+  personNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: title,
+    description,
+    datePublished: DATE_PUBLISHED,
+  }),
+  faqNode(FAQS),
+  breadcrumbNode(Astro.site!, [{ name: 'Home', path: PAGE_PATH }]),
+]);
+
+const HUB_LINKS = [
+  { label: 'Gutter Replacement Cost Calculator', href: '/calculators/gutter-replacement-cost/' },
+  { label: 'Window Replacement Cost Calculator', href: '/calculators/window-replacement-cost/' },
+  { label: 'Metal Roof Cost Calculator', href: '/calculators/metal-roof-cost/' },
+  { label: 'Siding Cost Calculator', href: '/calculators/siding-cost/' },
+];
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<BaseLayout title={title} description={description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <section class="mx-auto max-w-4xl px-4 pt-12 pb-8 sm:px-6 sm:pt-16">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+      Roof Replacement Cost Calculator
+    </h1>
+    <p class="mt-4 max-w-2xl text-lg text-body">
+      Get an instant Low / Mid / High estimate for your roof replacement. Enter your roof size
+      (or your home&rsquo;s footprint), pick a material, and adjust tear-off, underlayment, and
+      region to match your project.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6" aria-labelledby="calculator-heading">
+    <h2 id="calculator-heading" class="sr-only">Calculator</h2>
+    <div class="grid gap-6 rounded-xl border border-hairline bg-canvas p-6 shadow-sm sm:p-8 lg:grid-cols-2">
+      <form id="roof-calculator-form" class="space-y-6">
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">How do you want to enter roof size?</legend>
+          <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-direct" value="direct" checked class="h-4 w-4" />
+              Enter roof area directly
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-footprint" value="footprint" class="h-4 w-4" />
+              Estimate from home size
+            </label>
+          </div>
+        </fieldset>
+
+        <div id="area-mode-direct-fields">
+          <label for="direct-sqft" class="block text-sm font-medium text-ink">Roof Area (sq ft)</label>
+          <input
+            type="number"
+            id="direct-sqft"
+            name="direct-sqft"
+            min="0"
+            step="50"
+            inputmode="numeric"
+            autocomplete="off"
+            value={DEFAULT_INPUTS.directSqft}
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          />
+        </div>
+
+        <div id="area-mode-footprint-fields" class="hidden space-y-4">
+          <div>
+            <label for="home-sqft" class="block text-sm font-medium text-ink">Home Square Footage</label>
+            <input
+              type="number"
+              id="home-sqft"
+              name="home-sqft"
+              min="0"
+              step="50"
+              inputmode="numeric"
+              autocomplete="off"
+              value={DEFAULT_INPUTS.homeSqft}
+              class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+            />
+          </div>
+          <div>
+            <label for="stories" class="block text-sm font-medium text-ink">Stories</label>
+            <select
+              id="stories"
+              name="stories"
+              class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+            >
+              <option value="1">1 Story</option>
+              <option value="2">2 Stories</option>
+              <option value="3">3+ Stories</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="pitch" class="block text-sm font-medium text-ink">Roof Pitch</label>
+          <select
+            id="pitch"
+            name="pitch"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {PITCH_ADDERS.map((p) => (
+              <option value={p.key} selected={p.key === DEFAULT_INPUTS.pitch}>
+                {p.label} ({p.pitchRange})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label for="material" class="block text-sm font-medium text-ink">Roofing Material</label>
+          <select
+            id="material"
+            name="material"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {MATERIALS.map((m) => (
+              <option value={m.key} selected={m.key === DEFAULT_INPUTS.material}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label class="flex items-center gap-2 text-sm font-medium text-ink">
+            <input type="checkbox" id="tearoff-toggle" checked class="h-4 w-4" />
+            Tear off existing roof
+          </label>
+          <div id="tearoff-layers-field" class="mt-2">
+            <label for="tearoff-layers" class="block text-sm text-body">Layers to remove</label>
+            <select
+              id="tearoff-layers"
+              name="tearoff-layers"
+              class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+            >
+              <option value="1" selected={DEFAULT_INPUTS.tearOffLayers === 1}>1 Layer</option>
+              <option value="2" selected={DEFAULT_INPUTS.tearOffLayers === 2}>2 Layers</option>
+              <option value="3" selected={DEFAULT_INPUTS.tearOffLayers === 3}>3 Layers</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="flex items-center gap-2 text-sm font-medium text-ink">
+            <input type="checkbox" id="underlayment-toggle" checked={DEFAULT_INPUTS.underlayment} class="h-4 w-4" />
+            Upgrade underlayment (synthetic / ice-and-water shield)
+          </label>
+        </div>
+
+        <div>
+          <label for="region" class="block text-sm font-medium text-ink">Region (adjusts labor cost)</label>
+          <select
+            id="region"
+            name="region"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {REGIONS.map((r) => (
+              <option value={r.key} selected={r.key === DEFAULT_INPUTS.region}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </form>
+
+      <div class="rounded-lg bg-canvas-soft-2 p-6" aria-live="polite">
+        <p class="text-sm font-medium text-body">Estimated Cost</p>
+        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Low</p>
+            <p id="result-low" class="tabular-nums text-xl font-semibold text-ink">
+              {defaultResult.low.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Mid</p>
+            <p id="result-mid" class="tabular-nums text-xl font-semibold text-ink">
+              {defaultResult.mid.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">High</p>
+            <p id="result-high" class="tabular-nums text-xl font-semibold text-ink">
+              {defaultResult.high.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        <table class="mt-6 w-full text-sm">
+          <caption class="sr-only">Itemized cost breakdown</caption>
+          <thead>
+            <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+              <th scope="col" class="py-2 font-medium">Line Item</th>
+              <th scope="col" class="py-2 text-right font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Material &amp; Install</td>
+              <td id="bd-material" class="tabular-nums py-2 text-right text-ink">
+                {defaultResult.lineItems.materialCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+              </td>
+            </tr>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Tear-Off</td>
+              <td id="bd-tearoff" class="tabular-nums py-2 text-right text-ink">
+                {defaultResult.lineItems.tearOffCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+              </td>
+            </tr>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Underlayment</td>
+              <td id="bd-underlayment" class="tabular-nums py-2 text-right text-ink">
+                {defaultResult.lineItems.underlaymentCost.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+              </td>
+            </tr>
+            <tr>
+              <td class="py-2 font-medium text-ink">Subtotal (region-adjusted)</td>
+              <td id="bd-subtotal" class="tabular-nums py-2 text-right font-medium text-ink">
+                {defaultResult.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="mt-4 text-xs text-mute">
+          Roof area used: <span id="bd-area" class="tabular-nums">{defaultResult.roofAreaSqft.toLocaleString('en-US')}</span> sq ft
+          (<span id="bd-squares" class="tabular-nums">{defaultResult.squares}</span> squares)
+        </p>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            id="copy-result-button"
+            class="rounded-full bg-ink px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Copy Result
+          </button>
+          <button
+            type="button"
+            id="download-summary-button"
+            class="rounded-full border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Download Summary
+          </button>
+        </div>
+        <span id="result-action-status" class="mt-2 block text-sm text-success" aria-live="polite"></span>
+
+        <div class="mt-6 border-t border-hairline pt-6">
+          <ShareResult />
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-4 text-xs text-mute">{REGIONAL_DISCLAIMER}</p>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6">
+    <CTASlot label="Get matched with a local roofing contractor" />
+  </section>
+
+  <article class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <h2 class="text-2xl font-semibold tracking-tight text-ink">How This Calculator Works</h2>
+    <p class="mt-4 text-body">
+      This calculator prices your roof the way a contractor does. It starts with roof area, converts
+      that area into &ldquo;squares&rdquo; (the roofing industry&rsquo;s standard unit of 100 square
+      feet), then applies a per-square material rate, a tear-off rate, an underlayment rate, and a
+      regional labor multiplier. If you don&rsquo;t know your exact roof area, switch to &ldquo;Estimate
+      from home size&rdquo; and enter your home&rsquo;s total square footage and number of stories.
+      The calculator divides by stories to approximate your footprint, then applies a pitch-based
+      multiplier (derived from basic roof geometry) to convert that flat footprint into actual sloped
+      roof surface area. A steeper pitch always produces more roof surface than the same footprint on
+      a shallow roof, so pitch affects the area calculation whenever you estimate from your home's
+      footprint. If you enter your roof's measured area directly instead, pitch doesn't change your
+      price, since there's no footprint left to convert.
+    </p>
+    <p class="mt-4 text-body">
+      The calculator prices material per square. Tear-off cost scales with how many old layers the
+      crew removes, since stripping multiple layers down to the decking takes more labor and costs
+      more to haul away. Underlayment adds the cost of upgrading from basic felt, already priced into
+      the base material rate, to a synthetic or ice-and-water-shield underlayment. {REGIONAL_DISCLAIMER}
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">What Drives Roof Replacement Cost</h2>
+    <p class="mt-4 text-body">
+      <strong>Material</strong> moves the price more than anything else. Asphalt shingles stay the
+      cheapest option per square, followed by wood shake, then metal, then concrete and clay tile,
+      with natural slate at the top end. The gap between the cheapest and most expensive material can
+      run three to four times the total project cost on an identical roof.
+    </p>
+    <p class="mt-4 text-body">
+      <strong>Tear-off and layers</strong> matter because a roof with two or three layers of old
+      shingles takes longer to strip, generates more debris to haul away, and often reveals decking
+      issues invisible from the ground. <strong>Underlayment</strong> is a smaller line item but a
+      real one, especially in climates with ice damming or wind-driven rain, where a synthetic or
+      ice-and-water-shield underlayment reduces leak risk.
+    </p>
+    <p class="mt-4 text-body">
+      <strong>Roof pitch</strong> affects how much material you need, since steeper roofs have more
+      surface area per square foot of footprint. Steep-slope work is also slower and needs more
+      safety equipment in the real world, but this calculator doesn&rsquo;t add a separate charge for
+      that yet, since no reliable published source states exactly how much it should be.
+      <strong>Region</strong> captures differences in labor rates, permitting fees, and disposal
+      costs across the country, though only two of seven regions carry a verified adjustment today;
+      the rest sit at national parity until a citable source turns up. Finally,
+      <strong>roof complexity</strong> (valleys, dormers, chimneys, skylights, and steep cuts) adds
+      labor time a simple square-footage calculation can&rsquo;t fully capture. Complex rooflines are
+      why contractor bids often land above a size-only estimate.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Material Lifespan and Long-Term Value</h2>
+    <p class="mt-4 text-body">
+      The cheapest material up front isn&rsquo;t always the cheapest material over time. Asphalt shingles run {MATERIALS[0].lifespanYears[0]}-{MATERIALS[0].lifespanYears[1]} years before they
+      need replacing again, so a homeowner who stays in the house for 30-plus years can end up paying
+      for asphalt roofing twice. Wood shake lands in a similar {MATERIALS[1].lifespanYears[0]}-{MATERIALS[1].lifespanYears[1]}-year range at a higher install
+      cost, a harder combination to justify on value alone unless the look matters more than the
+      math. Metal roofing changes the math: a {MATERIALS[2].lifespanYears[0]}-{MATERIALS[2].lifespanYears[1]}-year lifespan means most metal roofs outlast
+      the mortgage on the house they cover, and many insurers discount premiums for impact-resistant
+      metal panels. Concrete and clay tile push further still, lasting {MATERIALS[3].lifespanYears[0]}-{MATERIALS[4].lifespanYears[1]} years
+      when the structure underneath can carry the added weight. Natural slate is the outlier at {MATERIALS[5].lifespanYears[0]}-{MATERIALS[5].lifespanYears[1]} years; a well-maintained slate roof can outlast the house around it. Divide
+      total installed cost by expected lifespan years and the annualized gap between materials
+      narrows, even though the sticker price does not.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Worked Example</h2>
+    <p class="mt-4 text-body">
+      Take the calculator&rsquo;s own default scenario: a 2,000 sq ft roof entered directly, architectural
+      asphalt shingles, a single-layer tear-off, an underlayment upgrade, and national-average
+      regional pricing. That works out to 20 squares of material at $356 per square, or $7,100 rounded
+      to the nearest $50. Add a single-layer tear-off at $115 per square (20 x $115 = $2,300) and an
+      underlayment upgrade at $55 per square (20 x $55 = $1,100), and the subtotal comes to $10,500.
+      Apply the calculator&rsquo;s Low/High spread (0.85x to 1.15x, a symmetric band around that
+      midpoint) and you get a Low estimate of $8,950, a High estimate of $12,050, and a $10,500
+      midpoint to budget around. Swap the material to metal and that subtotal alone jumps to $19,800.
+      Move to a Pacific-region ZIP code and the $10,500 midpoint becomes $12,400. Try it above with
+      your own numbers.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Repair vs. Replace</h2>
+    <p class="mt-4 text-body">
+      A repair is the right call when damage is localized (a handful of missing or cracked shingles,
+      a single active leak with an identifiable source, or flashing damage around one penetration) and
+      the roof is less than about 15 years into its expected lifespan. Replacement starts to make more
+      financial sense once you&rsquo;re facing any combination of the following: the roof is at or
+      past 15-20 years old (for asphalt) or nearing the end of its material-specific lifespan, more
+      than 25-30% of the roof surface shows granule loss, curling, or cracking, leaks show up in
+      multiple unrelated areas rather than one isolated spot, you can see daylight through the roof
+      deck from the attic, or you&rsquo;ve already paid for two or more separate repairs in the last
+      few years. Patch it a third time and the running total often catches up to the cost of a single
+      replacement within a 3-5 year window, and a patched roof still carries the risk of hidden
+      decking damage that a repair crew won&rsquo;t fully inspect.
+    </p>
+    <p class="mt-4 text-body">
+      Run the numbers before deciding. A typical asphalt shingle repair costs a few hundred dollars up
+      to about $1,500 depending on scope, while a full replacement on the same roof can run $9,000 to
+      $20,000 using the material rates above. If you&rsquo;re weighing a third repair on an aging roof,
+      add up what you&rsquo;ve already spent on the first two. You may find you&rsquo;re most of the
+      way to a down payment on a full replacement before you even book the third patch job. A licensed
+      inspector or contractor can tell you whether the decking underneath is sound, and that matters
+      more to this decision than the condition of the shingles alone.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Questions to Ask a Contractor</h2>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-body">
+      <li>Are you licensed and insured in this state, and can you provide proof of both?</li>
+      <li>Are you a certified installer for the specific shingle or panel manufacturer you&rsquo;re quoting, and does that unlock an extended manufacturer warranty?</li>
+      <li>Does your quote include a full tear-off to the decking, or a layover on top of the existing roof?</li>
+      <li>What underlayment are you using, and is ice-and-water shield included at eaves and valleys?</li>
+      <li>Who pulls the permit, and is that fee included in the quote?</li>
+      <li>What does the workmanship warranty cover, separate from the manufacturer&rsquo;s material warranty, and for how long?</li>
+      <li>How do you handle decking replacement if you find rot once the old roof is off, and how is that priced?</li>
+      <li>What&rsquo;s the cleanup and magnetic nail-sweep process, and how many days should I expect the crew on-site?</li>
+      <li>What&rsquo;s the payment schedule, and is any deposit required before materials are delivered?</li>
+      <li>Can I get the estimate itemized in writing, broken out by material, labor, tear-off, and disposal?</li>
+    </ul>
+  </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={AUTHOR.name}
+      datePublished={DATE_PUBLISHED}
+    />
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6" aria-labelledby="faq-heading">
+    <h2 id="faq-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Frequently Asked Questions
+    </h2>
+    <div class="mt-4 divide-y divide-hairline">
+      {FAQS.map((faq) => (
+        <details class="group py-4">
+          <summary class="cursor-pointer list-none text-base font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+            {faq.question}
+          </summary>
+          <p class="mt-2 text-sm text-body">{faq.answer}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-20 sm:px-6" aria-labelledby="hub-heading">
+    <h2 id="hub-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      More Home Improvement Calculators
+    </h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      {HUB_LINKS.map((link) => (
+        <a
+          href={link.href}
+          class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+        >
+          {link.label}
+          <span class="rounded-full bg-canvas-soft-2 px-2 py-0.5 text-xs font-normal text-mute">Coming soon</span>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { calculate, decodeInputs, type CalculatorInputs, type TearOffLayers, type AreaMode } from '../lib/calculator';
+  import type { MaterialKey, PitchKey, RegionKey } from '../data/rates';
+
+  const currency = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+
+  const form = document.getElementById('roof-calculator-form') as HTMLFormElement;
+  const directFields = document.getElementById('area-mode-direct-fields')!;
+  const footprintFields = document.getElementById('area-mode-footprint-fields')!;
+  const tearoffToggle = document.getElementById('tearoff-toggle') as HTMLInputElement;
+  const tearoffLayersField = document.getElementById('tearoff-layers-field')!;
+
+  function readInputs(): CalculatorInputs {
+    const areaMode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value as AreaMode;
+    return {
+      areaMode,
+      directSqft: Number((document.getElementById('direct-sqft') as HTMLInputElement).value) || 0,
+      homeSqft: Number((document.getElementById('home-sqft') as HTMLInputElement).value) || 0,
+      stories: Number((document.getElementById('stories') as HTMLSelectElement).value) || 1,
+      material: (document.getElementById('material') as HTMLSelectElement).value as MaterialKey,
+      pitch: (document.getElementById('pitch') as HTMLSelectElement).value as PitchKey,
+      tearOffLayers: tearoffToggle.checked
+        ? (Number((document.getElementById('tearoff-layers') as HTMLSelectElement).value) as TearOffLayers)
+        : 0,
+      underlayment: (document.getElementById('underlayment-toggle') as HTMLInputElement).checked,
+      region: (document.getElementById('region') as HTMLSelectElement).value as RegionKey,
+    };
+  }
+
+  function applyInputs(inputs: CalculatorInputs) {
+    (document.getElementById(inputs.areaMode === 'direct' ? 'area-mode-direct' : 'area-mode-footprint') as HTMLInputElement).checked = true;
+    (document.getElementById('direct-sqft') as HTMLInputElement).value = String(inputs.directSqft);
+    (document.getElementById('home-sqft') as HTMLInputElement).value = String(inputs.homeSqft);
+    (document.getElementById('stories') as HTMLSelectElement).value = String(inputs.stories);
+    (document.getElementById('material') as HTMLSelectElement).value = inputs.material;
+    (document.getElementById('pitch') as HTMLSelectElement).value = inputs.pitch;
+    tearoffToggle.checked = inputs.tearOffLayers > 0;
+    (document.getElementById('tearoff-layers') as HTMLSelectElement).value = String(inputs.tearOffLayers || 1);
+    (document.getElementById('underlayment-toggle') as HTMLInputElement).checked = inputs.underlayment;
+    (document.getElementById('region') as HTMLSelectElement).value = inputs.region;
+    updateAreaModeVisibility();
+    updateTearoffVisibility();
+  }
+
+  function updateAreaModeVisibility() {
+    const mode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value;
+    directFields.classList.toggle('hidden', mode !== 'direct');
+    footprintFields.classList.toggle('hidden', mode !== 'footprint');
+  }
+
+  function updateTearoffVisibility() {
+    tearoffLayersField.classList.toggle('hidden', !tearoffToggle.checked);
+  }
+
+  function render() {
+    const inputs = readInputs();
+    const result = calculate(inputs);
+
+    document.getElementById('result-low')!.textContent = currency.format(result.low);
+    document.getElementById('result-mid')!.textContent = currency.format(result.mid);
+    document.getElementById('result-high')!.textContent = currency.format(result.high);
+    document.getElementById('bd-material')!.textContent = currency.format(result.lineItems.materialCost);
+    document.getElementById('bd-tearoff')!.textContent = currency.format(result.lineItems.tearOffCost);
+    document.getElementById('bd-underlayment')!.textContent = currency.format(result.lineItems.underlaymentCost);
+    document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
+    document.getElementById('bd-area')!.textContent = result.roofAreaSqft.toLocaleString('en-US');
+    document.getElementById('bd-squares')!.textContent = String(result.squares);
+
+    window.dispatchEvent(new CustomEvent('roofcalc:inputs-changed', { detail: inputs }));
+    return { inputs, result };
+  }
+
+  form.addEventListener('input', () => {
+    updateAreaModeVisibility();
+    updateTearoffVisibility();
+    render();
+  });
+
+  window.addEventListener('roofcalc:restore-inputs', (event) => {
+    applyInputs((event as CustomEvent<CalculatorInputs>).detail);
+    render();
+  });
+
+  const statusEl = document.getElementById('result-action-status')!;
+
+  document.getElementById('copy-result-button')?.addEventListener('click', async () => {
+    const { inputs, result } = render();
+    const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+    const summary = [
+      'Roof Replacement Cost Estimate',
+      'CalcRoofCost.com',
+      `Material: ${materialLabel}`,
+      `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft (${result.squares} squares)`,
+      `Low: ${currency.format(result.low)}`,
+      `Mid: ${currency.format(result.mid)}`,
+      `High: ${currency.format(result.high)}`,
+    ].join('\n');
+    await navigator.clipboard.writeText(summary);
+    statusEl.textContent = 'Result copied to clipboard!';
+    window.setTimeout(() => (statusEl.textContent = ''), 2500);
+  });
+
+  document.getElementById('download-summary-button')?.addEventListener('click', () => {
+    const { result } = render();
+    const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+    const regionLabel = (document.getElementById('region') as HTMLSelectElement).selectedOptions[0].textContent;
+    const lines = [
+      'Roof Replacement Cost Estimate',
+      'CalcRoofCost.com',
+      '',
+      `Material: ${materialLabel}`,
+      `Region: ${regionLabel}`,
+      `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft (${result.squares} squares)`,
+      '',
+      `Material & Install: ${currency.format(result.lineItems.materialCost)}`,
+      `Tear-Off: ${currency.format(result.lineItems.tearOffCost)}`,
+      `Underlayment: ${currency.format(result.lineItems.underlaymentCost)}`,
+      `Subtotal: ${currency.format(result.subtotal)}`,
+      '',
+      `Low estimate: ${currency.format(result.low)}`,
+      `Mid estimate: ${currency.format(result.mid)}`,
+      `High estimate: ${currency.format(result.high)}`,
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'roof-replacement-cost-estimate.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  updateAreaModeVisibility();
+  updateTearoffVisibility();
+  render();
+</script>

@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Design tokens sourced from DESIGN.md (Vercel-inspired system).
+   Proprietary Geist/Geist Mono replaced with the documented open-source
+   substitutes (Inter, JetBrains Mono) per DESIGN.md's own fallback note. */
+@theme {
+  --color-ink: #171717;
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #fafafa;
+  --color-canvas-soft-2: #f5f5f5;
+  --color-body: #4d4d4d;
+  --color-mute: #888888;
+  --color-hairline: #ebebeb;
+  --color-hairline-strong: #a1a1a1;
+  --color-link: #0070f3;
+  --color-link-deep: #0761d1;
+  --color-success: #0070f3;
+  --color-error: #ee0000;
+  --color-error-soft: #f7d4d6;
+  --color-error-deep: #c50000;
+  --color-warning: #f5a623;
+  --color-warning-soft: #ffefcf;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 100px;
+
+  --spacing-section: 12rem;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+  --color-ink: #ededed;
+  --color-canvas: #0a0a0a;
+  --color-canvas-soft: #000000;
+  --color-canvas-soft-2: #1a1a1a;
+  --color-body: #a1a1a1;
+  --color-mute: #6e6e6e;
+  --color-hairline: #2e2e2e;
+  --color-hairline-strong: #4a4a4a;
+  --color-link: #3291ff;
+  --color-link-deep: #79b8ff;
+  --color-success: #3291ff;
+  --color-error: #ff5c5c;
+  --color-error-soft: #3a1a1a;
+  --color-error-deep: #ff8080;
+  --color-warning-soft: #3a2c0a;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-canvas-soft);
+  color: var(--color-ink);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.font-mono-caption {
+  font-family: var(--font-mono);
+}
+
+/* Theme toggle: CSS-driven icon swap, no JS class juggling on the SVGs themselves */
+.theme-toggle-icon-sun {
+  display: none;
+}
+
+html.dark .theme-toggle-icon-sun {
+  display: block;
+}
+
+html.dark .theme-toggle-icon-moon {
+  display: none;
+}
+
+/* Skip-link: visually hidden until focused */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}

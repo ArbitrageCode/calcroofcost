@@ -1,0 +1,97 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getBlogPost } from '../../data/blogPosts';
+import { calculate, DEFAULT_INPUTS } from '../../lib/calculator';
+import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+
+const post = getBlogPost('roof-repair-vs-replacement');
+const PAGE_PATH = `/blog/${post.slug}/`;
+const title = `${post.title} | CalcRoofCost.com`;
+
+const jsonLd = buildGraph([
+  personNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: post.title,
+    description: post.description,
+    datePublished: post.datePublished,
+  }),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Blog', path: '/blog/' },
+    { name: post.title, path: PAGE_PATH },
+  ]),
+]);
+
+const replacementExample = calculate(DEFAULT_INPUTS);
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const priorRepairs = 650 + 900 + 2200;
+const halfRule = Math.round(replacementExample.mid / 2);
+---
+
+<BaseLayout title={title} description={post.description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <p class="text-sm text-mute">{post.datePublished}</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
+
+    <p class="mt-6 text-body">
+      An 18-year-old asphalt roof gets a $2,200 quote to fix a chimney leak and replace a section of curling shingles nearby. The same roof already cost its owner $650 for a repair two years earlier and $900 the year before that. Three repairs, {usd(priorRepairs)} total, one roof, three years. Run that roof through the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">replacement cost calculator</a>
+      at its default settings, a 2,000 sq ft asphalt roof, moderate pitch, one tear-off layer, an underlayment upgrade, and a full replacement lands between {usd(replacementExample.low)} and {usd(replacementExample.high)}. The $2,200 repair quote looks small next to that range. It stops looking small once you count the two repairs that came before it.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">The 50% Rule</h2>
+    <p class="mt-4 text-body">
+      Roofers and insurance adjusters lean on a rule of thumb: a repair quoted above roughly half the cost of a full replacement should become a replacement instead. Apply it to the calculator's own default scenario, {usd(replacementExample.mid)} for a full reroof, and the threshold sits around {usd(halfRule)}. A homeowner staring at a $6,000 repair estimate on that roof is staring at a bad trade before they even factor in that the untouched two-thirds of the roof is the same age as the section that just failed. Run your own roof through the calculator to find your own threshold before you sign a repair estimate.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Age Changes the Math Even Without New Damage</h2>
+    <p class="mt-4 text-body">
+      Sun and daily heat cycling degrade shingles whether or not a leak has shown up yet. A roof under 10 years old with a localized problem is worth repairing, almost without exception. Between 10 and 15 years, repair still makes sense unless the damage spreads wide. Past 15 to 20 years for asphalt, or the equivalent fraction of expected life for other materials (see our
+      <a href="/blog/metal-vs-asphalt-roof-cost-comparison/" class="text-link underline hover:text-link-deep">material lifespan comparison</a>
+      for exact ranges by material), the odds tilt toward replacement. A homeowner who repairs at year 17 often buys two more years before the next repair, and then the replacement on top of it. An inspector who confirms the decking is still sound turns that bet into an informed one instead of a guess.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">How Much of the Roof Is Failing</h2>
+    <p class="mt-4 text-body">
+      A repair covering under 10% of the roof, with no other problems present, is almost always the right call on its own. Damage spanning 25 to 30% of the roof, or showing up in separate sections rather than one contiguous patch, points to systemic material failure rather than one bad spot. Patching that one spot leaves the rest of the roof on the same failure timeline it was already on. A contractor can estimate the percentage during a single walk of the roof, counting damaged shingle courses against the total, section by section, and most will do this for free as part of the repair quote. For the specific warning signs that separate the two situations, read
+      <a href="/blog/signs-you-need-roof-replacement/" class="text-link underline hover:text-link-deep">9 Signs You Need a Roof Replacement, Not a Repair</a>.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">What a Single Repair Costs</h2>
+    <p class="mt-4 text-body">
+      A small flashing or shingle fix runs a few hundred dollars. A larger job, replacing a storm-damaged section, runs closer to $1,500. Neither number gets close to a {usd(replacementExample.mid)} replacement on its own, so the real decision rarely turns on one repair bill. It turns on whether this repair is the first of the roof's life or the third.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Waiting Costs Money Before You Spend Any</h2>
+    <p class="mt-4 text-body">
+      A slow leak keeps working behind the walls while a homeowner debates repair against replacement. Wet insulation loses its R-value. Drywall and framing start growing mold, and a mold remediation bill of $1,500 to $3,000 can land on top of the roof bill if the moisture sits long enough. Moisture that soaks a roof deck for months turns sound plywood into rotted plywood, and a contractor has to replace that decking along with the roofing material, adding cost to the replacement that follows. A roof leaking today runs up a bill on the weeks nobody calls a contractor.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">The Three-Repair Roof, Worked Through</h2>
+    <p class="mt-4 text-body">
+      Go back to the roof from the opening: 18 years old, {usd(priorRepairs)} spent across three repairs, a fresh $2,200 quote on the table. The 50% rule alone doesn't flag this one, since $2,200 sits nowhere near half of a {usd(replacementExample.mid)} replacement. Age, repeat repairs, and cumulative spend together tell a story that no single number tells on its own. A homeowner who tracks every repair bill in one place, even a simple note on a phone, spots this pattern faster than one who doesn't. This is the roof the checklist below exists for.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Insurance Changes the Calculation</h2>
+    <p class="mt-4 text-body">
+      Damage from a specific covered event, hail, wind, a fallen tree limb, changes the economics enough to get an adjuster's assessment before committing to either repair or replacement. A homeowner in Amarillo with hail dents across half the roof after a spring storm may find the insurer covers a full replacement for the cost of a deductible, a very different number than the {usd(replacementExample.mid)} baseline above. Watch for contractors who push a claim for cosmetic damage that wouldn't otherwise justify one. Filing small claims repeatedly can raise future premiums by more than the repair itself would have cost paid out of pocket.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">A Checklist for the Decision</h2>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-body">
+      <li>Repair quoted above roughly half a full replacement quote: lean replace.</li>
+      <li>Roof past 15-20 years old for asphalt, or the equivalent for your material: lean replace.</li>
+      <li>Damage covers 25-30% or more of the roof, or shows up in separate spots: lean replace.</li>
+      <li>This is your third repair or later in the past few years: lean replace.</li>
+      <li>Damage is small and localized, the roof is under 10-15 years old, and this is your first repair: lean repair.</li>
+    </ul>
+    <p class="mt-4 text-body">
+      A roof at 14 years old with one small, cheap, localized repair is still worth patching most of the time. A 6-year-old roof with severe storm damage across most of its surface can still justify early replacement. Use the checklist to narrow the decision, then confirm with an in-person inspection before committing to either path. If the checklist points toward replacement, run your roof's size, material, and region through the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">roof replacement cost calculator</a>
+      to build a real budget before contractor bids start arriving.
+    </p>
+  </article>
+</BaseLayout>

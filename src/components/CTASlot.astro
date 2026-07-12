@@ -1,0 +1,22 @@
+---
+// Inert placeholder for a future CTA/ad slot. Renders no links, scripts, or
+// tracking — just a labeled reserved space so layout doesn't shift later.
+// Flip SHOW_CTA to true to activate once a lead-gen partner is wired in.
+const SHOW_CTA = false;
+
+export interface Props {
+  label?: string;
+}
+
+const { label = 'CTA Slot' } = Astro.props;
+---
+
+{SHOW_CTA && (
+  <div
+    class="flex min-h-24 items-center justify-center rounded-lg border border-dashed border-hairline-strong bg-canvas-soft-2 text-xs text-mute"
+    aria-hidden="true"
+    data-cta-slot
+  >
+    {label}
+  </div>
+)}

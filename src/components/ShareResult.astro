@@ -1,0 +1,50 @@
+---
+// Keeps the current calculator inputs mirrored into the URL query string and
+// offers a "copy link" button. Decoupled from calculator.ts's types via
+// CustomEvents so this component has no page-specific knowledge:
+//
+//   window.dispatchEvent(new CustomEvent('roofcalc:inputs-changed', { detail: inputs }))
+//     -> this component re-encodes `inputs` into the URL (history.replaceState)
+//
+//   on load, this component reads the URL and dispatches:
+//     new CustomEvent('roofcalc:restore-inputs', { detail: decodedInputs })
+//     -> the calculator page listens for this to pre-fill its form
+---
+
+<div class="flex flex-wrap items-center gap-3">
+  <button
+    type="button"
+    id="share-result-button"
+    class="rounded-full border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+  >
+    Share Result
+  </button>
+  <span id="share-result-status" class="text-sm text-success" aria-live="polite"></span>
+</div>
+
+<script>
+  import { encodeInputs, decodeInputs } from '../lib/calculator';
+
+  const button = document.getElementById('share-result-button');
+  const status = document.getElementById('share-result-status');
+
+  window.addEventListener('roofcalc:inputs-changed', (event) => {
+    const inputs = (event as CustomEvent).detail;
+    const params = encodeInputs(inputs);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+  });
+
+  button?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    if (status) status.textContent = 'Link copied!';
+    window.setTimeout(() => {
+      if (status) status.textContent = '';
+    }, 2000);
+  });
+
+  if (window.location.search) {
+    const decoded = decodeInputs(new URLSearchParams(window.location.search));
+    window.dispatchEvent(new CustomEvent('roofcalc:restore-inputs', { detail: decoded }));
+  }
+</script>

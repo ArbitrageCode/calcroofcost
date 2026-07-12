@@ -1,0 +1,145 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getBlogPost } from '../../data/blogPosts';
+import { PITCH_ADDERS } from '../../data/rates';
+import { calculate, pitchAreaFactor } from '../../lib/calculator';
+import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+
+const post = getBlogPost('roof-pitch-cost-impact');
+const PAGE_PATH = `/blog/${post.slug}/`;
+const title = `${post.title} | CalcRoofCost.com`;
+
+const jsonLd = buildGraph([
+  personNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: post.title,
+    description: post.description,
+    datePublished: post.datePublished,
+  }),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Blog', path: '/blog/' },
+    { name: post.title, path: PAGE_PATH },
+  ]),
+]);
+
+// Footprint mode is the only mode where pitch changes the total: a 2,000 sq ft
+// home footprint, one story, asphalt, one tear-off layer, underlayment
+// upgrade, national-average region, held constant across all four tiers.
+const pitchExamples = PITCH_ADDERS.map((p) => {
+  const result = calculate({
+    areaMode: 'footprint',
+    directSqft: 0,
+    homeSqft: 2000,
+    stories: 1,
+    material: 'asphalt',
+    pitch: p.key,
+    tearOffLayers: 1,
+    underlayment: true,
+    region: 'national',
+  });
+  return { ...p, areaFactor: pitchAreaFactor(p.key), result };
+});
+
+const lowPitch = pitchExamples.find((p) => p.key === 'low')!;
+const moderatePitch = pitchExamples.find((p) => p.key === 'moderate')!;
+const steepPitch = pitchExamples.find((p) => p.key === 'steep')!;
+const verySteep = pitchExamples.find((p) => p.key === 'very_steep')!;
+const gap = verySteep.result.mid - lowPitch.result.mid;
+const moderateToVerySteepGap = verySteep.result.mid - moderatePitch.result.mid;
+const renoGap = steepPitch.result.mid - moderatePitch.result.mid;
+
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+---
+
+<BaseLayout title={title} description={post.description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <p class="text-sm text-mute">{post.datePublished}</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
+
+    <p class="mt-6 text-body">
+      Two neighbors both have a 2,000 sq ft home footprint, one story, and pick asphalt shingles. One roof is a gentle 3/12 slope. The other climbs at 11/12 or steeper, the kind of roof where the crew clips into harnesses before they start. The first estimate comes to {usd(lowPitch.result.mid)}. The second comes to {usd(verySteep.result.mid)}, a {usd(gap)} gap on the same footprint, the same material, the same crew. The cause is simple: a steeper roof covers more actual surface than a flat one over the same footprint, so it takes more material to cover it. The
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">roof replacement cost calculator</a>
+      prices that difference automatically whenever you estimate from your home's footprint instead of a measured roof area.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">How Roofers Measure Pitch</h2>
+    <p class="mt-4 text-body">
+      Roofers write pitch as a ratio of rise to run: a 6/12 roof climbs 6 inches for every 12 inches it runs horizontally. A 2/12 to 4/12 roof counts as low slope. 5/12 to 7/12 is moderate, the range most houses fall into. 8/12 to 10/12 is steep. 11/12 and above is very steep. Roofs under 2/12 skip shingles entirely and switch to a membrane system, TPO, EPDM, or built-up roofing, because water sits too long on a near-flat surface for lapped shingles to hold.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">A Steep Roof Covers More Ground</h2>
+    <p class="mt-4 text-body">
+      A steep roof covers more surface area than a flat roof sitting over the identical footprint, for the same reason a ramp measures longer than the flat ground it climbs over. The math is basic geometry: multiply the flat footprint by the square root of 1 plus the rise-over-12 squared. That multiplier holds close to flat at low pitches and climbs fast once the roof gets steep. This is the only way pitch changes your price in this calculator: more surface area means more squares of material, and more squares means a bigger bill. If you already know your roof's measured area and enter it directly, changing the pitch dropdown does nothing to your total, because the area is no longer being derived from a footprint.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">What About the Labor Premium?</h2>
+    <p class="mt-4 text-body">
+      In the real world, steep roofs are also slower and more dangerous to work on, and plenty of contractors charge extra for that alone, separate from the extra material. Most contractors treat 6/12 as the practical ceiling for walking a roof without extra fall protection. Past that pitch, OSHA fall-protection rules kick in: harnesses, anchor points, roof jacks, staging that a low-slope job skips entirely. We looked for a reliable, published source that states exactly how much that labor premium runs by pitch tier and came up empty. Every candidate either gave a vague range with no clear origin, or, in one case, mixed real steep-slope charge codes with unrelated wind-resistance ratings in a way that didn't hold up. Rather than guess at a number and present it as researched, this calculator doesn't add a separate steep-slope labor charge. The pitch effect you see above is the material-quantity effect only, which likely means the calculator understates true cost on very steep roofs. Budget some room above the estimate if your roof is 8/12 or steeper, and ask your contractor to itemize any steep-slope charge separately.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">The Same Footprint, Four Pitches</h2>
+    <p class="mt-4 text-body">
+      Here's a 2,000 sq ft home footprint, one story, asphalt shingles, single-layer tear-off, underlayment upgrade, national-average region, priced at each pitch tier using the calculator's footprint mode, with every other input held constant.
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">Pitch Tier</th>
+            <th scope="col" class="py-2 text-right font-medium">Area Factor</th>
+            <th scope="col" class="py-2 text-right font-medium">Roof Area</th>
+            <th scope="col" class="py-2 text-right font-medium">Mid Estimate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pitchExamples.map((p) => (
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">{p.label} ({p.pitchRange})</td>
+              <td class="tabular-nums py-2 text-right text-ink">{p.areaFactor.toFixed(2)}x</td>
+              <td class="tabular-nums py-2 text-right text-ink">{p.result.roofAreaSqft.toLocaleString('en-US')} sq ft</td>
+              <td class="tabular-nums py-2 text-right text-ink">{usd(p.result.mid)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-xs text-mute">
+      Figures from this site's rate data, footprint mode only. Run the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">calculator</a> with your own
+      home footprint and pitch for a number tied to your project.
+    </p>
+    <p class="mt-4 text-body">
+      Moving from moderate to very steep adds {usd(moderateToVerySteepGap)} to this footprint's total, purely from the extra material a steeper roof needs to cover the same ground. A homeowner who isn't sure which tier their roof falls into can compare the roofline against a rafter square, or just ask during a free contractor estimate. Pitch is one of the fastest things for a roofer to read from the ground. A two-foot level also works: hold it flat against the roof surface from inside the attic, measure straight down from its low end to the rafter in inches, then double that number for the rise-per-12 figure.
+    </p>
+    <p class="mt-4 text-body">
+      A homeowner in Reno ran her home's footprint through this exact table. Her house measures 2,000 sq ft, and her roofer clocked the pitch at 9/12 during the estimate walk, squarely inside the steep tier. She had assumed a number closer to the moderate-pitch row, based on a neighbor's quote from two years earlier on a flatter roof. The extra roof area a steep pitch requires over the same footprint added {usd(renoGap)} over what she expected, and knowing the reason before the bid arrived kept her from treating it as a padded quote.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Pitch Hits Some Materials Harder</h2>
+    <p class="mt-4 text-body">
+      The calculator applies the same area-based adjustment to every material, but pitch bites some harder in practice. Clay tile, concrete tile, and slate carry real weight, and a steep roof under that weight raises structural questions that asphalt and metal rarely trigger. An engineer may need to confirm the rafters can carry both the tile's weight and the wind-uplift forces a steep tile roof faces. A homeowner eyeing a heavy premium material on a steep roof should price a structural assessment alongside the extra material cost above. See
+      <a href="/blog/metal-vs-asphalt-roof-cost-comparison/" class="text-link underline hover:text-link-deep">our metal vs. asphalt comparison</a>
+      for how weight and lifespan trade off between the two most common choices.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Snow and Wind Push Pitch in Different Directions</h2>
+    <p class="mt-4 text-body">
+      Steep roofs need more material, and builders in snow country choose them anyway. Snow load and ice damming both punish low-slope roofs harder: snow sits longer, and meltwater gets more chances to refreeze at the eaves and back up under the shingles. Builders across the northern U.S. and the mountain states specify steep pitches from the first drawing. A homeowner there inherits an already-steep roof from that decision and replaces it at the same pitch decades later. Drier, milder climates build shallower roofs from the start, since snow shedding never enters the design conversation.
+    </p>
+    <p class="mt-4 text-body">
+      Wind pulls in the opposite direction in hurricane country. Roof shape and pitch both change how a roof resists uplift, and local code can set minimum fastening schedules that add labor no matter the pitch category. Two roofs at the identical pitch can land on different final bids from wind-zone fastening rules alone, a real cost driver this calculator doesn't model yet.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Putting the Numbers Together</h2>
+    <p class="mt-4 text-body">
+      Material, tear-off layers, underlayment, and region each move your total on their own. Pitch moves it too, but only through the area it calculates when you estimate from your home's footprint, which is why a single "average cost per square foot" figure from a generic search result rarely lands anywhere near your actual bid. Run your roof through the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">calculator</a>
+      with your real pitch selected. If regional pricing factors into your budget too, read how
+      <a href="/blog/roof-replacement-cost-by-state/" class="text-link underline hover:text-link-deep">regional labor rates stack on top of material and pitch</a>.
+    </p>
+  </article>
+</BaseLayout>

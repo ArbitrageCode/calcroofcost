@@ -1,0 +1,154 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getBlogPost } from '../../data/blogPosts';
+import { getMaterial } from '../../data/rates';
+import { calculate } from '../../lib/calculator';
+import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+
+const post = getBlogPost('metal-vs-asphalt-roof-cost-comparison');
+const PAGE_PATH = `/blog/${post.slug}/`;
+const title = `${post.title} | CalcRoofCost.com`;
+
+const jsonLd = buildGraph([
+  personNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: post.title,
+    description: post.description,
+    datePublished: post.datePublished,
+  }),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Blog', path: '/blog/' },
+    { name: post.title, path: PAGE_PATH },
+  ]),
+]);
+
+const asphalt = getMaterial('asphalt');
+const metal = getMaterial('metal');
+
+// Same 2,000 sq ft / 1-layer tear-off / underlayment scenario used in the
+// homepage worked example, run through the real calculator for both
+// materials so these figures can't drift from src/data/rates.ts.
+const SCENARIO = {
+  areaMode: 'direct' as const,
+  directSqft: 2000,
+  homeSqft: 2000,
+  stories: 1,
+  tearOffLayers: 1 as const,
+  underlayment: true,
+  region: 'national' as const,
+};
+
+const asphaltResult = calculate({ ...SCENARIO, pitch: 'moderate', material: 'asphalt' });
+const metalResult = calculate({ ...SCENARIO, pitch: 'moderate', material: 'metal' });
+const asphaltTotal = asphaltResult.mid;
+const metalTotal = metalResult.mid;
+
+const asphaltAvgLifespan = (asphalt.lifespanYears[0] + asphalt.lifespanYears[1]) / 2;
+const metalAvgLifespan = (metal.lifespanYears[0] + metal.lifespanYears[1]) / 2;
+const asphaltAnnualized = Math.round(asphaltTotal / asphaltAvgLifespan);
+const metalAnnualized = Math.round(metalTotal / metalAvgLifespan);
+const upfrontGap = metalTotal - asphaltTotal;
+
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+---
+
+<BaseLayout title={title} description={post.description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <p class="text-sm text-mute">{post.datePublished}</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
+
+    <p class="mt-6 text-body">
+      A homeowner in Denver gets two bids for the same 2,000 sq ft roof: {usd(asphaltTotal)} for architectural asphalt shingles, {usd(metalTotal)} for standing-seam metal. Same house. Same crew availability. A {usd(upfrontGap)} gap for what looks, from the curb, like the same job. The bids aren't wrong. They're pricing two roofs with different lifespans, different weight, and different failure modes, and neither bid explains that on the page. Here's the math both contractors are working from, pulled straight from our
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">roof replacement cost calculator</a>.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">The Two Bids, Side by Side</h2>
+    <p class="mt-4 text-body">
+      Same inputs for both rows: a 2,000 sq ft roof entered directly, one layer of tear-off, an underlayment upgrade, national-average region.
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">Line Item</th>
+            <th scope="col" class="py-2 text-right font-medium">Asphalt Shingles</th>
+            <th scope="col" class="py-2 text-right font-medium">Standing Seam Metal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Material &amp; Install</td>
+            <td class="tabular-nums py-2 text-right text-ink">{usd(asphaltResult.lineItems.materialCost)}</td>
+            <td class="tabular-nums py-2 text-right text-ink">{usd(metalResult.lineItems.materialCost)}</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Tear-Off + Underlayment</td>
+            <td class="tabular-nums py-2 text-right text-ink">{usd(asphaltResult.lineItems.tearOffCost + asphaltResult.lineItems.underlaymentCost)}</td>
+            <td class="tabular-nums py-2 text-right text-ink">{usd(metalResult.lineItems.tearOffCost + metalResult.lineItems.underlaymentCost)}</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 font-medium text-ink">Total (national average)</td>
+            <td class="tabular-nums py-2 text-right font-medium text-ink">{usd(asphaltTotal)}</td>
+            <td class="tabular-nums py-2 text-right font-medium text-ink">{usd(metalTotal)}</td>
+          </tr>
+          <tr>
+            <td class="py-2 text-body">Expected Lifespan</td>
+            <td class="tabular-nums py-2 text-right text-ink">{asphalt.lifespanYears[0]}-{asphalt.lifespanYears[1]} yrs</td>
+            <td class="tabular-nums py-2 text-right text-ink">{metal.lifespanYears[0]}-{metal.lifespanYears[1]} yrs</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-xs text-mute">
+      Figures from this site's rate data at national-average regional pricing. Run the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">calculator</a> with your own roof
+      size and region for a number tied to your project.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Divide by Years, and Metal Wins</h2>
+    <p class="mt-4 text-body">
+      Metal costs {Math.round((metalTotal / asphaltTotal - 1) * 100)}% more to install in this example. It also lasts close to twice as long: a {asphalt.lifespanYears[0]}-to-{asphalt.lifespanYears[1]}-year asphalt roof against a {metal.lifespanYears[0]}-to-{metal.lifespanYears[1]}-year metal one. Divide each total by its average lifespan and the story flips. Asphalt runs {usd(asphaltAnnualized)} a year. Metal runs {usd(metalAnnualized)} a year. A homeowner who plans to own the house for three more decades pays less per year for the roof that costs more today. A homeowner who plans to sell in five years never collects on that math, because a buyer looks at the roof's age, not its annualized cost. A 55-year-old buying her forever home in Tucson runs a different calculus than a 30-year-old flipping a starter house in Phoenix, even though both are pricing the identical roof.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">What the Sticker Price Leaves Out</h2>
+    <p class="mt-4 text-body">
+      Metal panel systems weigh close to what architectural asphalt weighs, sometimes less, so a standard reroof skips the old worry about reinforcing rafters. Reflective coatings cut attic heat gain in Phoenix and Tucson enough to qualify some products for utility rebates that asphalt shingles don't reach. Insurers in hail-prone states, Texas and Nebraska among them, discount premiums for impact-resistant metal panels. Rain noise, the complaint that keeps homeowners away from metal, disappears once the panels sit over solid decking and underlayment. A couple in a two-story house in Little Rock won't hear a storm any louder through a metal roof than through shingles. Asphalt sheds granules for the life of the roof and can grow algae streaks in humid climates. Metal needs a fastener check every few years and little else.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Finding a Crew Takes Longer for Metal</h2>
+    <p class="mt-4 text-body">
+      An asphalt tear-off and reroof wraps in one to three days, and most general roofing contractors in the country quote it without hesitation. Standing seam is a specialized trade inside roofing. A fabricator cuts panels to the roof's exact dimensions, and the crew crimps seams by hand or machine. A crew built around shingle installs may touch metal only a handful of times a year. Budget three to seven days for the install, and budget extra time before that to find a contractor who can show finished standing-seam roofs, not a brochure. A bad crimp on a metal roof produces a leak that costs more to trace than a comparable asphalt repair, because water travels along the panel before it shows up on a ceiling. Ask to see three completed jobs, and call the homeowners on at least one of them.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Read the Warranty Past the Headline Number</h2>
+    <p class="mt-4 text-body">
+      Asphalt manufacturers advertise 25-to-50-year material warranties, and the coverage prorates down within the first decade for most product lines. Labor coverage past year one or two requires paying for a certified-installer upgrade in most cases. Metal manufacturers advertise 30-to-50-year finish warranties against fading, plus a separate warranty, often lifetime and non-prorated, against the panel rusting through. Ask three questions before you sign: does the warranty prorate, does it cover labor or material alone, and does it transfer if you sell the house. A transferable warranty on either material becomes a real selling point at closing.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">One Roof Ends Up in a Landfill Twice as Often</h2>
+    <p class="mt-4 text-body">
+      Steel and aluminum roofing panels come from a high percentage of recycled metal and go back into the recycling stream at the end of their service life. Asphalt shingles are a petroleum product, and outside a handful of regional shingle-recycling programs that grind old material into road paving, most torn-off asphalt heads to a landfill. Homeowners replace an asphalt roof two to three times over the years a single metal roof lasts, so that landfill trip happens two to three times on the same house.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Resale Rewards the Familiar Choice</h2>
+    <p class="mt-4 text-body">
+      A buyer touring a house rarely asks what the roof is made of. Asphalt matches what most of the block already has, and a roof that matches the neighborhood draws fewer questions during inspection. Metal has moved from unusual to accepted in wildfire and hail country, where a buyer in Boulder or Amarillo may read a metal roof as a selling point rather than a curiosity. Check what roofs sit on the houses near yours before betting on a resale bump from either material.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Picking Between Them</h2>
+    <p class="mt-4 text-body">
+      Pick asphalt for the lower bid today, a planned sale inside a decade, or a block where every roof already matches. Pick metal to cut the number of times you replace a roof over thirty years, to fight hail or wildfire exposure, or to chase the insurance and energy rebates. Neither answer is universal. A landlord who turns properties over every four years has no use for a fifty-five-year warranty. A couple who just bought their last house has no reason to save {usd(upfrontGap)} today if it costs them a second reroof in year twenty-five.
+    </p>
+    <p class="mt-4 text-body">
+      Run both materials through the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">calculator</a>
+      with your own roof size, material, and region before you decide. The gap between the two bids moves with every input you change. If you're estimating from your home's footprint rather than a measured roof area, a steep pitch adds material cost to both totals by the same factor, so check
+      <a href="/blog/roof-pitch-cost-impact/" class="text-link underline hover:text-link-deep">how pitch changes your roof area</a>
+      before you assume this example matches your roof.
+    </p>
+  </article>
+</BaseLayout>

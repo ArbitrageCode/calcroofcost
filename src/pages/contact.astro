@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { buildGraph, breadcrumbNode } from '../lib/schema';
+
+const title = 'Contact | CalcRoofCost.com';
+const description = 'Get in touch with the CalcRoofCost.com team with questions, corrections, or feedback.';
+
+const jsonLd = buildGraph([
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Contact', path: '/contact/' },
+  ]),
+]);
+
+// Placeholder address — replace with the real inbox before launch.
+const CONTACT_EMAIL = 'hello@calcroofcost.com';
+---
+
+<BaseLayout title={title} description={description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-2xl px-4 py-16 sm:px-6">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink">Contact</h1>
+    <p class="mt-6 text-body">
+      Spotted a rate that looks out of date, found a bug in a calculator, or have a suggestion for a
+      new tool? We&rsquo;d like to hear about it.
+    </p>
+    <p class="mt-4 text-body">
+      Email us at
+      <a href={`mailto:${CONTACT_EMAIL}`} class="text-link underline hover:text-link-deep">{CONTACT_EMAIL}</a>.
+    </p>
+  </article>
+</BaseLayout>

@@ -1,0 +1,128 @@
+---
+// Client-side citation generator (APA / MLA / Chicago / Harvard).
+// Citation strings are computed in the browser from data-* attributes so the
+// component works the same on every page without server-side date logic.
+export interface Props {
+  title: string;
+  authorName: string;
+  datePublished: string; // ISO date, e.g. "2026-07-03"
+  dateModified?: string; // ISO date
+  url?: string; // defaults to the current page URL at runtime
+}
+
+const { title, authorName, datePublished, dateModified, url } = Astro.props;
+---
+
+<section
+  id="cite-this-page"
+  class="rounded-lg border border-hairline bg-canvas p-6"
+  data-cite-page
+  data-title={title}
+  data-author={authorName}
+  data-date-published={datePublished}
+  data-date-modified={dateModified ?? datePublished}
+  data-url={url ?? ''}
+>
+  <h2 class="text-lg font-semibold tracking-tight text-ink">Cite This Page</h2>
+  <p class="mt-1 text-sm text-body">
+    Reference this page&rsquo;s methodology and figures in your own writing.
+  </p>
+
+  <div class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Citation format">
+    <button type="button" class="cite-tab rounded-full border border-hairline px-3 py-1.5 text-sm text-ink" role="tab" aria-selected="true" data-format="apa">APA</button>
+    <button type="button" class="cite-tab rounded-full border border-hairline px-3 py-1.5 text-sm text-body" role="tab" aria-selected="false" data-format="mla">MLA</button>
+    <button type="button" class="cite-tab rounded-full border border-hairline px-3 py-1.5 text-sm text-body" role="tab" aria-selected="false" data-format="chicago">Chicago</button>
+    <button type="button" class="cite-tab rounded-full border border-hairline px-3 py-1.5 text-sm text-body" role="tab" aria-selected="false" data-format="harvard">Harvard</button>
+  </div>
+
+  <div class="mt-4">
+    <label for="cite-output" class="sr-only">Citation text</label>
+    <textarea
+      id="cite-output"
+      class="w-full resize-none rounded-md border border-hairline bg-canvas-soft-2 p-3 font-mono-caption text-xs text-ink"
+      rows="3"
+      readonly
+      autocomplete="off"
+      spellcheck="false"
+    ></textarea>
+  </div>
+
+  <button
+    type="button"
+    class="cite-copy mt-3 rounded-full bg-ink px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+  >
+    Copy Citation
+  </button>
+  <span class="cite-copy-status ml-3 text-sm text-success" aria-live="polite"></span>
+</section>
+
+<script>
+  function formatDateParts(iso: string) {
+    const d = new Date(iso);
+    return {
+      year: d.getFullYear(),
+      monthLong: d.toLocaleDateString('en-US', { month: 'long' }),
+      monthAbbr: d.toLocaleDateString('en-US', { month: 'short' }),
+      day: d.getDate(),
+    };
+  }
+
+  function buildCitations(container: HTMLElement) {
+    const title = container.dataset.title ?? '';
+    const author = container.dataset.author ?? '';
+    const datePublished = container.dataset.datePublished ?? '';
+    const dateModified = container.dataset.dateModified ?? datePublished;
+    const url = container.dataset.url || window.location.href;
+    const site = 'CalcRoofCost.com';
+
+    const pub = formatDateParts(datePublished);
+    const mod = formatDateParts(dateModified);
+    const accessed = formatDateParts(new Date().toISOString());
+
+    return {
+      apa: `${author}. (${mod.year}). ${title}. ${site}. Retrieved ${accessed.monthLong} ${accessed.day}, ${accessed.year}, from ${url}`,
+      mla: `${author}. "${title}." ${site}, ${mod.day} ${mod.monthAbbr}. ${mod.year}, ${url}.`,
+      chicago: `${author}. "${title}." ${site}. Last modified ${mod.monthLong} ${mod.day}, ${mod.year}. ${url}.`,
+      harvard: `${author} (${mod.year}) ${title}. ${site}. Available at: ${url} (Accessed: ${accessed.day} ${accessed.monthAbbr}. ${accessed.year}).`,
+    };
+  }
+
+  function initCitePage(container: HTMLElement) {
+    const citations = buildCitations(container);
+    const tabs = container.querySelectorAll<HTMLButtonElement>('.cite-tab');
+    const output = container.querySelector<HTMLTextAreaElement>('#cite-output');
+    const copyButton = container.querySelector<HTMLButtonElement>('.cite-copy');
+    const status = container.querySelector<HTMLSpanElement>('.cite-copy-status');
+
+    function setFormat(format: keyof typeof citations) {
+      if (!output) return;
+      output.value = citations[format];
+      tabs.forEach((tab) => {
+        const isActive = tab.dataset.format === format;
+        tab.setAttribute('aria-selected', String(isActive));
+        tab.classList.toggle('text-ink', isActive);
+        tab.classList.toggle('text-body', !isActive);
+        tab.classList.toggle('border-ink', isActive);
+      });
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        setFormat(tab.dataset.format as keyof typeof citations);
+      });
+    });
+
+    copyButton?.addEventListener('click', async () => {
+      if (!output) return;
+      await navigator.clipboard.writeText(output.value);
+      if (status) status.textContent = 'Copied!';
+      window.setTimeout(() => {
+        if (status) status.textContent = '';
+      }, 2000);
+    });
+
+    setFormat('apa');
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-cite-page]').forEach(initCitePage);
+</script>

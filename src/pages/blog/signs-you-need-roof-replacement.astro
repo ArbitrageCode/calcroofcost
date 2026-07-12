@@ -1,0 +1,116 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getBlogPost } from '../../data/blogPosts';
+import { calculate } from '../../lib/calculator';
+import { buildGraph, personNode, articleNode, breadcrumbNode } from '../../lib/schema';
+
+const post = getBlogPost('signs-you-need-roof-replacement');
+const PAGE_PATH = `/blog/${post.slug}/`;
+const title = `${post.title} | CalcRoofCost.com`;
+
+const jsonLd = buildGraph([
+  personNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: post.title,
+    description: post.description,
+    datePublished: post.datePublished,
+  }),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Blog', path: '/blog/' },
+    { name: post.title, path: PAGE_PATH },
+  ]),
+]);
+
+// A homeowner's 22-year-old asphalt roof, sized to a common single-story home.
+const replacement = calculate({
+  areaMode: 'direct',
+  directSqft: 1800,
+  homeSqft: 1800,
+  stories: 1,
+  material: 'asphalt',
+  pitch: 'moderate',
+  tearOffLayers: 1,
+  underlayment: true,
+  region: 'national',
+});
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const priorRepairs = 650 + 900 + 2200;
+---
+
+<BaseLayout title={title} description={post.description}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <p class="text-sm text-mute">{post.datePublished}</p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
+
+    <p class="mt-6 text-body">
+      A homeowner in Tulsa paid $650 to fix a flashing leak in 2023 and $900 for a shingle patch in 2024. In 2026, a roofer quotes $2,200 to fix a new leak around the chimney on the same 22-year-old, 1,800 sq ft asphalt roof. That's {usd(priorRepairs)} in repairs on one roof in three years, and the leaks keep finding new spots. Run that same roof through the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">replacement cost calculator</a>
+      and a full reroof lands between {usd(replacement.low)} and {usd(replacement.high)}, with {usd(replacement.mid)} as the likely number. Nine signs separate a roof that needs one more patch from a roof that needs the whole thing torn off.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">1. The Roof Has Hit Its Expected Lifespan</h2>
+    <p class="mt-4 text-body">
+      Asphalt shingles carry a 20-to-30-year rating. Wood shake runs 25-to-30. Metal runs 40-to-70. Tile and slate run 50 years or longer. Check your roof's installation date against that range. A roof near the top of its material's window is worth budgeting for, even if it looks sound from the driveway. UV exposure and daily heat cycling break shingles down from the inside, well before a leak shows up.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">2. Granules Pile Up in the Gutters</h2>
+    <p class="mt-4 text-body">
+      Asphalt shingles carry a coating of mineral granules that shields the asphalt underneath from UV damage. New shingles shed a few granules the first year, and that's normal. A homeowner who scoops handfuls out of the gutters every fall, for several years running, is watching the protective coating disappear. Bald, shiny patches across large sections of the roof mean the same thing: the shingles have lost their shield and are aging fast from that point on.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">3. Shingles Curl at the Edges</h2>
+    <p class="mt-4 text-body">
+      Shingles curl up at the edges (cupping) or curl in the middle with flat edges (clawing) once they lose the oils that kept them flexible and sealed. A contractor can spot-repair a handful of curling shingles in one section. Curling across most of the roof means the entire batch installed in one job is failing together. That's a shingle generation reaching the end of its life, not an isolated defect from one bad bundle.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">4. Leaks Show Up in Rooms That Don't Connect</h2>
+    <p class="mt-4 text-body">
+      Damaged flashing around one vent pipe, causing one water stain in one room, is a repair. A ceiling stain in the guest bedroom this month and a different stain in the kitchen next month point somewhere else: the roofing membrane has failed across a wide area, not at one identifiable spot. A spot repair on one leak won't touch the other one.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">5. You Can See Daylight From the Attic</h2>
+    <p class="mt-4 text-body">
+      Climb into the attic on a sunny afternoon and turn off the lights. Any pinprick of daylight through the roof deck marks a gap wide enough to let water through during the next storm. Few signs on this list are as unambiguous. If you see light, you need a new roof.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">6. The Roofline Sags</h2>
+    <p class="mt-4 text-body">
+      Stand across the street and sight down the roofline from ridge to eave. A dip, a sway, any curve where a straight line should run, points to structural damage in the decking or rafters, the kind moisture causes after soaking in over months or years. A sagging roofline is a safety problem. Call a structural engineer alongside your roofer before you decide anything.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">7. A Storm Strips Shingles Twice</h2>
+    <p class="mt-4 text-body">
+      Wind pulls a handful of shingles off one section during a storm. That's a repair. A storm strips shingles or panels across a large share of the roof, or the same roof loses material in two separate storms within a year, and the fastening system has stopped holding up to ordinary weather. The shingles and the fasteners beneath them have reached the end of the road together.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">8. Moss Blankets the Surface, or You Find Rot</h2>
+    <p class="mt-4 text-body">
+      A thin layer of algae staining is cosmetic and sometimes washes off. Thick moss is different: it holds moisture against the roof surface around the clock, which breaks materials down faster and can rot the decking underneath. Press your fingers against a soft, spongy patch, or watch a contractor pull up a shingle section and find rotted wood. That's decking damage, and no surface repair reaches it.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">9. You've Already Paid for Two Repairs</h2>
+    <p class="mt-4 text-body">
+      Every roof reaches a point where repairs stop paying for themselves. Two or more separate repair bills in the past two to three years is that point for most homeowners. Add up what you've spent, the way the Tulsa homeowner above did with {usd(priorRepairs)} across three repairs, and compare that total against a written replacement quote. The gap is often smaller than expected, and a third repair rarely buys more than another year before the next call.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Check Your Own Roof Before You Call Anyone</h2>
+    <p class="mt-4 text-body">
+      Grab binoculars and scan the roof from the ground for missing, curling, or bald shingles. Check the gutters for granules after the next rain. Go into the attic, or check the highest interior ceiling if the attic isn't accessible, and look for water stains, a musty smell, or daylight. None of this replaces a professional inspection, but a homeowner who walks in already knowing which of the nine signs apply gets a sharper first quote, and avoids getting sold a repair that a replacement would have solved for good, or the reverse.
+    </p>
+    <p class="mt-4 text-body">
+      The signs stack. A roof with mild granule loss and one small leak sits in different territory than a roof with granule loss, curling shingles in three sections, and leaks in two rooms. The more signs that show up together, the faster a homeowner can skip the repair conversation and start budgeting for a full replacement.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">What to Do Next</h2>
+    <p class="mt-4 text-body">
+      Two or more of these signs on your roof mean it's time for a professional inspection. Call an independent inspector instead of a roofing sales rep, so the diagnosis doesn't come tied to a sale. From there, run your roof's size, material, and pitch through the
+      <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">roof replacement cost calculator</a>
+      to get a Low/Mid/High budget before contractor bids start arriving. For the numbers behind the repair-or-replace decision itself, read
+      <a href="/blog/roof-repair-vs-replacement/" class="text-link underline hover:text-link-deep">Roof Repair vs. Replacement: How to Decide</a>.
+    </p>
+  </article>
+</BaseLayout>
