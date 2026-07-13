@@ -9,6 +9,11 @@
 //   on load, this component reads the URL and dispatches:
 //     new CustomEvent('roofcalc:restore-inputs', { detail: decodedInputs })
 //     -> the calculator page listens for this to pre-fill its form
+//
+//   The restore value is also retained on window.__roofcalcPendingRestore so
+//   the calculator page can pick it up even if its listener registers after
+//   this dispatch fires (module script order isn't guaranteed to survive a
+//   future DOM reorder).
 ---
 
 <div class="flex flex-wrap items-center gap-3">
@@ -45,6 +50,8 @@
 
   const sp = new URLSearchParams(window.location.search);
   if (sp.has('material') || sp.has('sqft') || sp.has('mode')) {
-    window.dispatchEvent(new CustomEvent('roofcalc:restore-inputs', { detail: decodeInputs(sp) }));
+    const restoredInputs = decodeInputs(sp);
+    (window as unknown as { __roofcalcPendingRestore?: unknown }).__roofcalcPendingRestore = restoredInputs;
+    window.dispatchEvent(new CustomEvent('roofcalc:restore-inputs', { detail: restoredInputs }));
   }
 </script>

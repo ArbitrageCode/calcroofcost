@@ -1,18 +1,18 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { buildGraph, breadcrumbNode } from '../lib/schema';
+import { buildGraph, organizationNode, breadcrumbNode } from '../lib/schema';
 
 const title = 'Contact | CalcRoofCost.com';
 const description = 'Get in touch with the CalcRoofCost.com team with questions, corrections, or feedback.';
 
 const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
   breadcrumbNode(Astro.site!, [
     { name: 'Home', path: '/' },
     { name: 'Contact', path: '/contact/' },
   ]),
 ]);
 
-// Placeholder address — replace with the real inbox before launch.
 const CONTACT_EMAIL = 'hello@calcroofcost.com';
 ---
 

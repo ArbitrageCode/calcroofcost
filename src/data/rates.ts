@@ -1,11 +1,11 @@
 // Roofing cost rate table.
 //
-// Material, tear-off, and underlayment figures are quoted directly from a
-// single live source each (see each sourceNote). Region and pitch
-// multipliers are blended across every live source that publishes usable,
-// comparable data for that adjustment; see the sourceNote on each entry in
-// REGIONS and PITCH_ADDERS for the exact blend method and every URL used.
-// Where a source was checked but did not publish comparable data (e.g. an
+// Every rate below, material, tear-off, underlayment, region, and pitch, is
+// single-sourced (see each sourceNote). Where a region bucket is wider than
+// the source's own regions, that entry averages across sub-regions of that
+// same single source rather than across multiple sources; see the sourceNote
+// on each entry in REGIONS for the exact sub-regions averaged. Where a
+// second source was checked but did not publish comparable data (e.g. an
 // interactive calculator with no static output, or figures built on
 // inconsistent baselines that can't be normalized without fabricating
 // precision), that source is named and excluded rather than forced into an
@@ -150,7 +150,7 @@ export interface PitchRate {
 }
 
 const PITCH_LABOR_SOURCE =
-  'squaredash.com/cost/labor - steep labor $200-275/sq (mid $237.50) minus walkable labor $150-175/sq (mid $162.50) = $75/sq premium.';
+  'https://www.squaredash.com/cost/labor/ - steep labor $200-275/sq (mid $237.50) minus walkable labor $150-175/sq (mid $162.50) = $75/sq premium.';
 
 export const PITCH_ADDERS: PitchRate[] = [
   {

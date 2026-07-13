@@ -21,7 +21,7 @@ const FAQS = [
   {
     question: 'How much does it cost to replace a roof on average?',
     answer:
-      "You'll spend between $8,950 and $12,100 to replace an asphalt shingle roof on a 2,000 sq ft home at national-average pricing, with size, material, tear-off requirements, and regional labor rates all moving that number. Premium materials like metal, tile, or slate can push the cost well above $20,000.",
+      "You'll spend between $8,950 and $12,100 to replace an asphalt shingle roof on a 2,000 sq ft roof at national-average pricing, with size, material, tear-off requirements, and regional labor rates all moving that number. Premium materials like metal, tile, or slate can push the cost well above $20,000.",
   },
   {
     question: 'What is the cheapest roofing material?',
@@ -175,6 +175,14 @@ const HUB_LINKS = [
       applyInputs((event as CustomEvent<CalculatorInputs>).detail);
       render();
     });
+
+    // Guard against DOM/script-order drift: if ShareResult's restore-inputs
+    // event already fired before the listener above was registered, pick up
+    // the retained value directly instead of silently losing the pre-fill.
+    const pendingRestore = (window as unknown as { __roofcalcPendingRestore?: CalculatorInputs }).__roofcalcPendingRestore;
+    if (pendingRestore) {
+      applyInputs(pendingRestore);
+    }
 
     const statusEl = document.getElementById('result-action-status')!;
 
@@ -508,9 +516,10 @@ const HUB_LINKS = [
 
     <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Methodology</h2>
     <p class="mt-4 text-body">
-      Every number on this page links to where it came from. When two sources publish comparable
-      data for the same adjustment, we average them. When only one does, we say so. When a source
-      didn&rsquo;t hold up, we name it and tell you why we left it out.
+      Every number on this page links to where it came from. Every adjustment is single-sourced;
+      where a region bucket is wider than our source&rsquo;s own regions, we average across that
+      one source&rsquo;s sub-regions, not across multiple sources. When a source didn&rsquo;t hold
+      up, we name it and tell you why we left it out.
     </p>
 
     <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Material &amp; Install Rates</h3>
@@ -592,7 +601,7 @@ const HUB_LINKS = [
       <strong>Region</strong> captures differences in labor rates, permitting fees, and disposal
       costs across the country; seven of the eight regions carry a verified adjustment sourced from
       published regional cost data, with National Average serving as the baseline those seven are
-      measured against &mdash; see
+      measured against. See
       <a href="/blog/roof-replacement-cost-by-state/" class="text-link underline hover:text-link-deep">how much a Pacific-region roof costs against a West South Central one</a>.
       Finally,
       <strong>roof complexity</strong> (valleys, dormers, chimneys, skylights, and steep cuts) adds
@@ -647,7 +656,7 @@ const HUB_LINKS = [
     </p>
     <p class="mt-4 text-body">
       Run the numbers before deciding. A typical asphalt shingle repair costs a few hundred dollars up
-      to about $1,500 depending on scope, while a full replacement on the same roof can run $9,000 to
+      to about $1,500 depending on scope, while a full replacement on the same roof can run $8,950 to
       $20,000 using the material rates above. If you&rsquo;re weighing a third repair on an aging roof,
       add up what you&rsquo;ve already spent on the first two. You may find you&rsquo;re most of the
       way to a down payment on a full replacement before you even book the third patch job. A licensed

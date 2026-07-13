@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { BLOG_POSTS } from '../../data/blogPosts';
-import { buildGraph, breadcrumbNode } from '../../lib/schema';
+import { buildGraph, organizationNode, breadcrumbNode } from '../../lib/schema';
 
 const title = 'Roofing Cost Blog | CalcRoofCost.com';
 const description = 'Research-backed articles on roof replacement cost, materials, and timing decisions.';
 
 const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
   breadcrumbNode(Astro.site!, [
     { name: 'Home', path: '/' },
     { name: 'Blog', path: '/blog/' },

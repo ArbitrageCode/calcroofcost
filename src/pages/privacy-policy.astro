@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { buildGraph, breadcrumbNode } from '../lib/schema';
+import { buildGraph, organizationNode, breadcrumbNode } from '../lib/schema';
 
 const title = 'Privacy Policy | CalcRoofCost.com';
 const description = 'How CalcRoofCost.com collects, uses, and protects information from site visitors.';
 const LAST_UPDATED = 'July 3, 2026';
 
 const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
   breadcrumbNode(Astro.site!, [
     { name: 'Home', path: '/' },
     { name: 'Privacy Policy', path: '/privacy-policy/' },

@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { buildGraph, breadcrumbNode } from '../lib/schema';
+import { buildGraph, organizationNode, breadcrumbNode } from '../lib/schema';
 
 const title = 'Terms of Use | CalcRoofCost.com';
 const description = 'Terms governing use of the calculators, content, and estimates on CalcRoofCost.com.';
 const LAST_UPDATED = 'July 13, 2026';
 
 const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
   breadcrumbNode(Astro.site!, [
     { name: 'Home', path: '/' },
     { name: 'Terms of Use', path: '/terms/' },

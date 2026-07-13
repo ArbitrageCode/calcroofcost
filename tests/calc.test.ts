@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculate, type CalculatorInputs, type AreaMode, type TearOffLayers } from '../src/lib/calculator';
+import { calculate, encodeInputs, decodeInputs, type CalculatorInputs, type AreaMode, type TearOffLayers } from '../src/lib/calculator';
 import { MATERIALS, PITCH_ADDERS, REGIONS, type MaterialKey, type PitchKey, type RegionKey } from '../src/data/rates';
 
 const BASE: CalculatorInputs = {
@@ -176,6 +176,101 @@ describe('pinned default scenario (direct 2000, asphalt, moderate, 1 layer, unde
     expect(r.low).toBe(8950);
     expect(r.mid).toBe(10500);
     expect(r.high).toBe(12100);
+  });
+});
+
+describe('pinned-value regression cases (hand-verified)', () => {
+  it('direct 2000, asphalt, moderate, 2 layers, underlayment, national', () => {
+    const r = calculate({
+      areaMode: 'direct',
+      directSqft: 2000,
+      homeSqft: 2000,
+      stories: 1,
+      material: 'asphalt',
+      pitch: 'moderate',
+      tearOffLayers: 2,
+      underlayment: true,
+      region: 'national',
+    });
+    expect(r.low).toBe(9500);
+    expect(r.mid).toBe(11200);
+    expect(r.high).toBe(12900);
+    expect(r.lineItems.materialCost).toBe(7100);
+    expect(r.lineItems.pitchSurchargeCost).toBe(0);
+    expect(r.lineItems.tearOffCost).toBe(3000);
+    expect(r.lineItems.underlaymentCost).toBe(1100);
+  });
+
+  it('footprint 2000/1story, steep, metal, 1 layer, underlayment, pacific', () => {
+    const r = calculate({
+      areaMode: 'footprint',
+      directSqft: 2000,
+      homeSqft: 2000,
+      stories: 1,
+      material: 'metal',
+      pitch: 'steep',
+      tearOffLayers: 1,
+      underlayment: true,
+      region: 'pacific',
+    });
+    expect(r.low).toBe(26750);
+    expect(r.mid).toBe(31450);
+    expect(r.high).toBe(36150);
+    expect(r.lineItems.materialCost).toBe(24250);
+    expect(r.lineItems.pitchSurchargeCost).toBe(2200);
+    expect(r.lineItems.tearOffCost).toBe(3400);
+    expect(r.lineItems.underlaymentCost).toBe(1600);
+  });
+
+  it('direct 2000, slate, very_steep, 2 layers, underlayment, west_south_central', () => {
+    const r = calculate({
+      areaMode: 'direct',
+      directSqft: 2000,
+      homeSqft: 2000,
+      stories: 1,
+      material: 'slate',
+      pitch: 'very_steep',
+      tearOffLayers: 2,
+      underlayment: true,
+      region: 'west_south_central',
+    });
+    expect(r.low).toBe(20550);
+    expect(r.mid).toBe(24150);
+    expect(r.high).toBe(27750);
+    expect(r.lineItems.materialCost).toBe(19500);
+    expect(r.lineItems.pitchSurchargeCost).toBe(1250);
+    expect(r.lineItems.tearOffCost).toBe(2500);
+    expect(r.lineItems.underlaymentCost).toBe(900);
+  });
+});
+
+describe('invariant: encodeInputs -> decodeInputs round-trips, including falsy zero values', () => {
+  it('round-trips tearOffLayers: 0 (not the default fallback)', () => {
+    const inputs: CalculatorInputs = { ...BASE, tearOffLayers: 0 };
+    const decoded = decodeInputs(encodeInputs(inputs));
+    expect(decoded.tearOffLayers).toBe(0);
+  });
+
+  it('round-trips underlayment: false (not the default fallback)', () => {
+    const inputs: CalculatorInputs = { ...BASE, underlayment: false };
+    const decoded = decodeInputs(encodeInputs(inputs));
+    expect(decoded.underlayment).toBe(false);
+  });
+
+  it('round-trips a full input set exactly', () => {
+    const inputs: CalculatorInputs = {
+      areaMode: 'footprint',
+      directSqft: 1234,
+      homeSqft: 5678,
+      stories: 2,
+      material: 'tile',
+      pitch: 'steep',
+      tearOffLayers: 0,
+      underlayment: false,
+      region: 'pacific',
+    };
+    const decoded = decodeInputs(encodeInputs(inputs));
+    expect(decoded).toEqual(inputs);
   });
 });
 
