@@ -25,3 +25,7 @@ pnpm-debug.log*
 .idea/
 .gstack/
 build2-source.zip
+
+# local tooling state
+.wrangler/
+.claude/settings.local.json
