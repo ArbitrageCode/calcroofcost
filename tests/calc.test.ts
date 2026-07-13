@@ -39,22 +39,22 @@ describe('pinned pitch scenarios (footprint 2000, 1 story, asphalt, 1-layer, und
 
   it('steep', () => {
     const r = calculate({ ...BASE, pitch: 'steep' });
-    expect(r.low).toBe(12850);
-    expect(r.mid).toBe(15100);
-    expect(r.high).toBe(17350);
+    expect(r.low).toBe(12050);
+    expect(r.mid).toBe(14200);
+    expect(r.high).toBe(16350);
     expect(r.lineItems.materialCost).toBe(8900);
-    expect(r.lineItems.pitchSurchargeCost).toBe(1900);
+    expect(r.lineItems.pitchSurchargeCost).toBe(1000);
     expect(r.lineItems.tearOffCost).toBe(2900);
     expect(r.lineItems.underlaymentCost).toBe(1400);
   });
 
   it('very_steep', () => {
     const r = calculate({ ...BASE, pitch: 'very_steep' });
-    expect(r.low).toBe(14400);
-    expect(r.mid).toBe(16950);
-    expect(r.high).toBe(19500);
+    expect(r.low).toBe(14550);
+    expect(r.mid).toBe(17100);
+    expect(r.high).toBe(19650);
     expect(r.lineItems.materialCost).toBe(10050);
-    expect(r.lineItems.pitchSurchargeCost).toBe(2100);
+    expect(r.lineItems.pitchSurchargeCost).toBe(2250);
     expect(r.lineItems.tearOffCost).toBe(3250);
     expect(r.lineItems.underlaymentCost).toBe(1550);
   });
@@ -213,11 +213,11 @@ describe('pinned-value regression cases (hand-verified)', () => {
       underlayment: true,
       region: 'pacific',
     });
-    expect(r.low).toBe(26750);
-    expect(r.mid).toBe(31450);
-    expect(r.high).toBe(36150);
+    expect(r.low).toBe(25900);
+    expect(r.mid).toBe(30450);
+    expect(r.high).toBe(35000);
     expect(r.lineItems.materialCost).toBe(24250);
-    expect(r.lineItems.pitchSurchargeCost).toBe(2200);
+    expect(r.lineItems.pitchSurchargeCost).toBe(1200);
     expect(r.lineItems.tearOffCost).toBe(3400);
     expect(r.lineItems.underlaymentCost).toBe(1600);
   });
@@ -234,13 +234,39 @@ describe('pinned-value regression cases (hand-verified)', () => {
       underlayment: true,
       region: 'west_south_central',
     });
-    expect(r.low).toBe(20550);
-    expect(r.mid).toBe(24150);
-    expect(r.high).toBe(27750);
+    expect(r.low).toBe(20600);
+    expect(r.mid).toBe(24250);
+    expect(r.high).toBe(27900);
     expect(r.lineItems.materialCost).toBe(19500);
-    expect(r.lineItems.pitchSurchargeCost).toBe(1250);
+    expect(r.lineItems.pitchSurchargeCost).toBe(1350);
     expect(r.lineItems.tearOffCost).toBe(2500);
     expect(r.lineItems.underlaymentCost).toBe(900);
+  });
+});
+
+describe('regression: pitch geometry factor applies only in footprint mode (not direct)', () => {
+  it('direct mode ignores the geometry factor entirely: roof area equals entered sqft for every pitch', () => {
+    for (const pitch of PITCH_KEYS) {
+      const r = calculate({ ...BASE, areaMode: 'direct', directSqft: 2000, pitch });
+      expect(r.roofAreaSqft).toBe(2000);
+    }
+  });
+
+  it('footprint mode applies the geometry factor: roof area grows with pitch', () => {
+    const flat = calculate({ ...BASE, areaMode: 'footprint', homeSqft: 2000, stories: 1, pitch: 'low' });
+    const steep = calculate({ ...BASE, areaMode: 'footprint', homeSqft: 2000, stories: 1, pitch: 'very_steep' });
+    expect(flat.roofAreaSqft).toBe(2062); // 2000 * sqrt(1 + (3/12)^2)
+    expect(steep.roofAreaSqft).toBe(2828); // 2000 * sqrt(1 + (12/12)^2)
+    expect(steep.roofAreaSqft).toBeGreaterThan(flat.roofAreaSqft);
+  });
+
+  it('same pitch, same numeric input: footprint area is ~11.8% higher than direct at 6/12 (moderate)', () => {
+    const direct = calculate({ ...BASE, areaMode: 'direct', directSqft: 2000, pitch: 'moderate' });
+    const footprint = calculate({ ...BASE, areaMode: 'footprint', homeSqft: 2000, stories: 1, pitch: 'moderate' });
+    expect(direct.roofAreaSqft).toBe(2000);
+    expect(footprint.roofAreaSqft).toBe(2236);
+    const pctHigher = (footprint.roofAreaSqft / direct.roofAreaSqft - 1) * 100;
+    expect(pctHigher).toBeCloseTo(11.8, 1);
   });
 });
 

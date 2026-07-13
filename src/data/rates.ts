@@ -117,28 +117,36 @@ export const UNDERLAYMENT_UPGRADE_COST_PER_SQUARE = 55;
 // steep-pitch premium pays for the difficulty of walking the roof, not for
 // the material being installed on it.
 //
-// Source: https://www.squaredash.com/cost/labor/, checked 2026-07-12, states
-// "A walkable roof (4/12 to 6/12) allows crews to work efficiently. Steep
-// roofs (8/12 and above) require harnesses, toe boards, and scaffolding,
-// slowing work by 30-50%" and gives per-square labor pricing of "$150-$175/
-// square for simple gable roofs" (walkable) vs. "$200-$275/square for steep
-// gables" (8/12+). No other candidate source held up: a Xactimate-based
-// pitch/multiplier table (geoquote.ai) states explicitly it is "a geometry
-// factor, not a labor, waste, safety, or price multiplier" and was discarded
-// as off-topic rather than cited as a labor cost.
+// Two sources, each supplying a different half of the derivation:
+// - https://www.squaredash.com/cost/labor/, checked 2026-07-12, states "the
+//   national average sits around $200/square" for roofing labor. That's the
+//   dollar anchor.
+// - https://roofpitch.net/roof-pitch-chart, checked 2026-07-12, publishes a
+//   labor-multiplier table by pitch: "2/12-3/12 (Low-slope): 0.90x", "4/12-
+//   6/12 (Baseline): 1.00x", "7/12-9/12 (OSHA steep): 1.15x-1.25x", "10/12-
+//   12/12 (Steep): 1.30x-1.50x". Its own 1.00x baseline tier lines up with
+//   squaredash's $200/sq anchor, which is why the two combine cleanly.
 //
-// Derivation: single-sourced (squaredash.com only; no second source
-// publishing a comparable steep-slope labor premium was found). The
-// surcharge is the difference between squaredash's steep midpoint and its
-// walkable midpoint: ($200+$275)/2 = $237.50 steep, ($150+$175)/2 = $162.50
-// walkable, $237.50 - $162.50 = $75.00/sq. Squaredash's own source states
-// its "walkable" tier (4/12-6/12) carries no surcharge, so low and moderate
-// (which sit at or below its steep threshold of 8/12) are set to $0 as a
-// sourced baseline, not an unsourced default. Squaredash does not publish a
-// further split above 8/12, so steep and very steep share the same sourced
-// surcharge rather than an invented escalation. This surcharge applies only
-// to material & install labor; tear-off and underlayment are not adjusted
-// for pitch because no source supports a steep-slope premium on those tasks.
+// Two other candidate sources did not hold up and are excluded rather than
+// forced into a blend: buildvisionai.com/calculators/roof-calculator
+// mentions steep-slope work above 7/12 qualitatively ("slower and often
+// needs staging") but publishes no $/SF or $/square figure to cite.
+// subcontractorhub.com has no roofing calculator and no steep-slope or
+// regional pricing content anywhere on the site.
+//
+// Derivation: surcharge = (roofpitch.net tier midpoint multiplier - 1.00) x
+// $200 baseline, rounded to the nearest $10. Steep (7/12-9/12): midpoint of
+// 1.15x-1.25x is 1.20x -> (1.20 - 1.00) x $200 = $40/sq. Very steep (10/12-
+// 12/12): midpoint of 1.30x-1.50x is 1.40x -> (1.40 - 1.00) x $200 = $80/sq.
+// Low slope's 0.90x tier and moderate's 1.00x baseline tier both sit at or
+// below roofpitch.net's own 1.00x baseline, which would imply a discount,
+// not a surcharge; this calculator only models steep-slope premiums (no
+// source corroborates a low-slope discount, and no other line item in this
+// calculator goes negative), so low and moderate stay at the sourced $0
+// baseline rather than introducing a negative adjustment. This surcharge
+// applies only to material & install labor; tear-off and underlayment are
+// not adjusted for pitch because no source supports a steep-slope premium
+// on those tasks.
 export type PitchKey = 'low' | 'moderate' | 'steep' | 'very_steep';
 
 export interface PitchRate {
@@ -149,8 +157,8 @@ export interface PitchRate {
   sourceNote: string;
 }
 
-const PITCH_LABOR_SOURCE =
-  'https://www.squaredash.com/cost/labor/ - steep labor $200-275/sq (mid $237.50) minus walkable labor $150-175/sq (mid $162.50) = $75/sq premium.';
+const PITCH_LABOR_SOURCES =
+  'https://roofpitch.net/roof-pitch-chart (pitch labor multiplier) + https://www.squaredash.com/cost/labor/ (national $200/sq labor baseline).';
 
 export const PITCH_ADDERS: PitchRate[] = [
   {
@@ -158,28 +166,28 @@ export const PITCH_ADDERS: PitchRate[] = [
     label: 'Low slope',
     pitchRange: '2/12 - 4/12',
     laborSurchargePerSquare: 0,
-    sourceNote: `${PITCH_LABOR_SOURCE} Source states 4/12-6/12 is a "walkable" roof crews work "efficiently," with no surcharge stated; this tier sits at or below that walkable range, so it is priced at the sourced baseline ($0/sq), not an unsourced default.`,
+    sourceNote: `${PITCH_LABOR_SOURCES} roofpitch.net's "2/12-3/12 (Low-slope)" tier is 0.90x, at or below its own 1.00x baseline, so this tier is priced at $0/sq rather than an unsourced discount.`,
   },
   {
     key: 'moderate',
     label: 'Moderate slope',
     pitchRange: '5/12 - 7/12',
     laborSurchargePerSquare: 0,
-    sourceNote: `${PITCH_LABOR_SOURCE} This tier sits below the source's explicit "8/12 and above" steep-surcharge threshold, so it is priced at the sourced baseline ($0/sq), not an unsourced default.`,
+    sourceNote: `${PITCH_LABOR_SOURCES} roofpitch.net's "4/12-6/12 (Baseline)" tier is 1.00x, i.e. no premium, so this tier is priced at $0/sq.`,
   },
   {
     key: 'steep',
     label: 'Steep slope',
     pitchRange: '8/12 - 10/12',
-    laborSurchargePerSquare: 75,
-    sourceNote: `${PITCH_LABOR_SOURCE} Source states steep roofs (8/12+) run "$200-$275/square" in labor vs. "$150-$175/square" for a walkable roof. Surcharge = steep midpoint ($237.50) - walkable midpoint ($162.50) = $75/sq.`,
+    laborSurchargePerSquare: 40,
+    sourceNote: `${PITCH_LABOR_SOURCES} roofpitch.net's "7/12-9/12 (OSHA steep)" tier is 1.15x-1.25x labor, midpoint 1.20x. Surcharge = (1.20 - 1.00) x $200 baseline = $40/sq.`,
   },
   {
     key: 'very_steep',
     label: 'Very steep slope',
     pitchRange: '11/12 - 13/12',
-    laborSurchargePerSquare: 75,
-    sourceNote: `${PITCH_LABOR_SOURCE} Source does not publish a tier finer than "8/12 and above," so this tier shares the steep-tier surcharge ($75/sq) rather than an extrapolated escalation beyond what the source states.`,
+    laborSurchargePerSquare: 80,
+    sourceNote: `${PITCH_LABOR_SOURCES} roofpitch.net's "10/12-12/12 (Steep)" tier is 1.30x-1.50x labor, midpoint 1.40x. Surcharge = (1.40 - 1.00) x $200 baseline = $80/sq.`,
   },
 ];
 
