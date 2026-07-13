@@ -59,7 +59,10 @@ export function pitchAreaFactor(pitch: PitchKey): number {
 }
 
 export function roundTo50(n: number): number {
-  return Math.round(n / 50) * 50;
+  // Snap to the nearest cent before dividing so floating-point noise below
+  // $0.01 (e.g. 10500 * 1.15 === 12074.999999999998) can't tip a $25 tie
+  // the wrong way; a true half-dollar tie still resolves up deterministically.
+  return Math.round(Math.round(n * 100) / 5000) * 50;
 }
 
 export interface LineItems {

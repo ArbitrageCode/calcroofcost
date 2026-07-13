@@ -21,7 +21,7 @@ const FAQS = [
   {
     question: 'How much does it cost to replace a roof on average?',
     answer:
-      "You'll spend between $8,950 and $12,050 to replace an asphalt shingle roof on a 2,000 sq ft home at national-average pricing, with size, material, tear-off requirements, and regional labor rates all moving that number. Premium materials like metal, tile, or slate can push the cost well above $20,000.",
+      "You'll spend between $8,950 and $12,100 to replace an asphalt shingle roof on a 2,000 sq ft home at national-average pricing, with size, material, tear-off requirements, and regional labor rates all moving that number. Premium materials like metal, tile, or slate can push the cost well above $20,000.",
   },
   {
     question: 'What is the cheapest roofing material?',
@@ -46,9 +46,9 @@ const FAQS = [
   {
     question: 'How do I know if I need a full roof replacement instead of a repair?',
     answer:
-      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See the Repair vs. Replace section below for a full breakdown.',
+      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See our Repair vs. Replace guide for the 50% rule and a worked example.',
     answerHtml:
-      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See the <a href="/blog/roof-repair-vs-replacement/" class="text-link underline hover:text-link-deep">Repair vs. Replace</a> section below for a full breakdown.',
+      'A full replacement makes more financial sense than a repair once the roof covering is beyond 15-20 years old, more than 25-30% of the roof surface shows damage, leaks are appearing in multiple unrelated locations, or you have already paid for two or more repairs in the past few years. See our <a href="/blog/roof-repair-vs-replacement/" class="text-link underline hover:text-link-deep">Repair vs. Replace guide</a> for the 50% rule and a worked example.',
   },
 ];
 
@@ -363,7 +363,7 @@ const HUB_LINKS = [
         </div>
 
         <div>
-          <label for="region" class="block text-sm font-medium text-ink">Region (adjusts labor cost)</label>
+          <label for="region" class="block text-sm font-medium text-ink">Region (adjusts total cost)</label>
           <select
             id="region"
             name="region"
@@ -488,7 +488,7 @@ const HUB_LINKS = [
       This calculator prices your roof the way a contractor does. It starts with roof area, converts
       that area into &ldquo;squares&rdquo; (the roofing industry&rsquo;s standard unit of 100 square
       feet), then applies a per-square material rate, a per-square steep-pitch labor surcharge, a
-      tear-off rate, an underlayment rate, and a regional labor multiplier. If you don&rsquo;t know your
+      tear-off rate, an underlayment rate, and a regional price multiplier. If you don&rsquo;t know your
       exact roof area, switch to &ldquo;Estimate from home size&rdquo; and enter your home&rsquo;s
       total square footage and number of stories. The calculator divides by stories to approximate
       your footprint, then applies a pitch-based geometry factor to convert that flat footprint into
@@ -520,7 +520,7 @@ const HUB_LINKS = [
       published installation price table. One source; checked {DATE_PUBLISHED}.
     </p>
 
-    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Regional Labor Adjustment</h3>
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Regional Price Adjustment</h3>
     <p class="mt-2 text-body">
       We checked three sources for regional cost data: <a href="https://www.roofcalc.org/regional-roofing-price-adjustments-in-us/" class="text-link underline hover:text-link-deep">roofcalc.org</a>,
       homewyse.com, and fixr.com. Only roofcalc.org publishes one clean percentage adjustment for all
@@ -531,8 +531,11 @@ const HUB_LINKS = [
       and averaging mismatched baselines would just fabricate precision, so we left it out. Two of
       our eight regions, Northeast and Midwest, are wider than roofcalc.org&rsquo;s own regions. For
       those, we average roofcalc.org&rsquo;s own sub-regions: Northeast blends New England (+7.37%)
-      and Mid Atlantic (+6.67%). The other six regions, including East South Central (KY, TN, MS,
-      AL), map 1:1 to a single roofcalc.org region. Checked {DATE_PUBLISHED}.
+      and Mid Atlantic (+6.67%); Midwest blends East North Central (+2.79%) and West North Central
+      (&minus;0.89%). National Average is the baseline itself, not a mapped region, and the other
+      five, including East South Central (KY, TN, MS, AL), map 1:1 to a single roofcalc.org region.
+      See <a href="/blog/roof-replacement-cost-by-state/" class="text-link underline hover:text-link-deep">the full region-by-region breakdown</a>,
+      with a worked example in every bucket. Checked {DATE_PUBLISHED}.
     </p>
 
     <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Pitch Labor Adjustment</h3>
@@ -589,7 +592,9 @@ const HUB_LINKS = [
       <strong>Region</strong> captures differences in labor rates, permitting fees, and disposal
       costs across the country; seven of the eight regions carry a verified adjustment sourced from
       published regional cost data, with National Average serving as the baseline those seven are
-      measured against. Finally,
+      measured against &mdash; see
+      <a href="/blog/roof-replacement-cost-by-state/" class="text-link underline hover:text-link-deep">how much a Pacific-region roof costs against a West South Central one</a>.
+      Finally,
       <strong>roof complexity</strong> (valleys, dormers, chimneys, skylights, and steep cuts) adds
       labor time a simple square-footage calculation can&rsquo;t fully capture. Complex rooflines are
       why contractor bids often land above a size-only estimate.
@@ -618,7 +623,7 @@ const HUB_LINKS = [
       to the nearest $50. Add a single-layer tear-off at $115 per square (20 x $115 = $2,300) and an
       underlayment upgrade at $55 per square (20 x $55 = $1,100), and the subtotal comes to $10,500.
       Apply the calculator&rsquo;s Low/High spread (0.85x to 1.15x, a symmetric band around that
-      midpoint) and you get a Low estimate of $8,950, a High estimate of $12,050, and a $10,500
+      midpoint) and you get a Low estimate of $8,950, a High estimate of $12,100, and a $10,500
       midpoint to budget around. Swap the material to metal and that subtotal alone jumps to $19,800.
       Move to a Pacific-region ZIP code and the $10,500 midpoint becomes $12,400. Try it above with
       your own numbers.
@@ -636,7 +641,9 @@ const HUB_LINKS = [
       deck from the attic, or you&rsquo;ve already paid for two or more separate repairs in the last
       few years. Patch it a third time and the running total often catches up to the cost of a single
       replacement within a 3-5 year window, and a patched roof still carries the risk of hidden
-      decking damage that a repair crew won&rsquo;t fully inspect.
+      decking damage that a repair crew won&rsquo;t fully inspect. See
+      <a href="/blog/signs-you-need-roof-replacement/" class="text-link underline hover:text-link-deep">the 9 warning signs that separate a patch from a full tear-off</a>
+      for the specifics behind each of those triggers.
     </p>
     <p class="mt-4 text-body">
       Run the numbers before deciding. A typical asphalt shingle repair costs a few hundred dollars up

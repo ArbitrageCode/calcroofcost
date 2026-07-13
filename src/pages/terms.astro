@@ -4,7 +4,7 @@ import { buildGraph, breadcrumbNode } from '../lib/schema';
 
 const title = 'Terms of Use | CalcRoofCost.com';
 const description = 'Terms governing use of the calculators, content, and estimates on CalcRoofCost.com.';
-const LAST_UPDATED = 'July 3, 2026';
+const LAST_UPDATED = 'July 13, 2026';
 
 const jsonLd = buildGraph([
   breadcrumbNode(Astro.site!, [
@@ -41,9 +41,16 @@ const jsonLd = buildGraph([
     <h2 class="mt-8 text-lg font-semibold text-ink">Acceptable Use</h2>
     <p class="mt-2 text-body">
       You may use this site&rsquo;s calculators and content for personal and business planning
-      purposes. You may not scrape, republish, or redistribute the site&rsquo;s underlying rate data
-      or editorial content without permission, and you may not use automated means to overload or
-      disrupt the site.
+      purposes. You may not use automated means to scrape, bulk-extract, or overload or disrupt the
+      site.
+    </p>
+    <p class="mt-2 text-body">
+      You may quote, cite, and reproduce our figures, tables, and methodology for editorial,
+      journalistic, or research use, with attribution and a link back to the source page on
+      CalcRoofCost.com. This permission covers individual figures and tables copied by hand or
+      through the site&rsquo;s own citation tools; it does not cover bulk automated extraction of the
+      site&rsquo;s underlying rate data, which remains covered by the anti-scraping restriction
+      above.
     </p>
 
     <h2 class="mt-8 text-lg font-semibold text-ink">No Warranty</h2>

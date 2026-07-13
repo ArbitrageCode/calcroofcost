@@ -1,7 +1,9 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import CitePage from '../../components/CitePage.astro';
 import { getBlogPost } from '../../data/blogPosts';
 import { REGIONS, REGIONAL_DISCLAIMER } from '../../data/rates';
+import { ORGANIZATION } from '../../data/author';
 import { calculate, DEFAULT_INPUTS } from '../../lib/calculator';
 import { buildGraph, organizationNode, articleNode, breadcrumbNode } from '../../lib/schema';
 
@@ -82,7 +84,7 @@ const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', curren
           {regionExamples.map((r) => (
             <tr class="border-b border-hairline">
               <td class="py-2 text-body">{r.label}</td>
-              <td class="tabular-nums py-2 text-right text-ink">{r.multiplier.toFixed(2)}x</td>
+              <td class="tabular-nums py-2 text-right text-ink">{r.multiplier.toFixed(4)}x</td>
               <td class="tabular-nums py-2 text-right text-ink">
                 {usd(r.result.mid)}
               </td>
@@ -95,7 +97,7 @@ const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', curren
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Why Two Regions Are Themselves an Average</h2>
     <p class="mt-4 text-body">
-      Our Region dropdown groups states into eight buckets, while roofcalc.org's own breakdown splits the country into nine, finer Census regions. Six of our buckets map onto exactly one of roofcalc.org's regions, so those six multipliers copy a single published percentage straight across. Two don't: Northeast covers what roofcalc.org splits into New England (+7.37%) and Mid Atlantic (+6.67%), and Midwest covers its East North Central (+2.79%) and West North Central (-0.89%). For those two, we average roofcalc.org's own sub-region figures. That's why Midwest lands so close to national parity, 1.0095x, essentially flat, even though its two halves pull in opposite directions: the plus and the minus mostly cancel out.
+      Our Region dropdown groups states into eight buckets, while roofcalc.org's own breakdown splits the country into nine, finer Census regions. National Average is our baseline, not a mapped region, and two of the remaining seven buckets are wider than roofcalc.org's own regions: Northeast covers what roofcalc.org splits into New England (+7.37%) and Mid Atlantic (+6.67%), and Midwest covers its East North Central (+2.79%) and West North Central (-0.89%). For those two, we average roofcalc.org's own sub-region figures. The other five map onto exactly one of roofcalc.org's regions, so those five multipliers copy a single published percentage straight across. That's why Midwest lands so close to national parity, 1.0095x, essentially flat, even though its two halves pull in opposite directions: the plus and the minus mostly cancel out.
     </p>
     <p class="mt-4 text-body">
       Kentucky, Tennessee, Mississippi, and Alabama get their own region here: East South Central, at -9.51% against the national baseline, sourced the same direct, 1:1 way as Pacific or Mountain. A homeowner in Nashville or Birmingham can pull {usd(eastSouthCentral.result.mid)} on the calculator's own {usd(national.result.mid)} baseline scenario instead of guessing between Midwest and South Atlantic.
@@ -113,7 +115,7 @@ const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', curren
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">How the Calculator Uses This Number</h2>
     <p class="mt-4 text-body">
-      The calculator applies the region multiplier to material, tear-off, and underlayment as one combined subtotal. Select "National Average" and you get the baseline used throughout this site. Switch to any other region and the breakdown table shifts by that region's verified multiplier. A homeowner near a region boundary, say Kansas City, which straddles the Midwest and West South Central line, can run both and treat the {usd(midwestWscGap)} spread between them as a real planning range, even though Midwest's own adjustment is small enough that it barely moves off the national baseline.
+      The calculator applies the region multiplier to material, tear-off, and underlayment as one combined subtotal. Select "National Average" and you get the baseline used throughout this site. Switch to any other region and the breakdown table shifts by that region's verified multiplier. A homeowner near a region boundary, say the Oklahoma-Missouri line, where West South Central meets Midwest, can run both and treat the {usd(midwestWscGap)} spread between them as a real planning range, even though Midwest's own adjustment is small enough that it barely moves off the national baseline.
     </p>
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Using This to Budget</h2>
@@ -125,4 +127,13 @@ const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', curren
       before you assume a low-cost region caps your total spend. A roof with premium metal panels in Oklahoma can cost more than a simple asphalt roof in coastal California, and a homeowner who checks the region dropdown alone before signing a contract misses that comparison.
     </p>
   </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={post.datePublished}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
 </BaseLayout>

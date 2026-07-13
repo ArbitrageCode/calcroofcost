@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import CitePage from '../../components/CitePage.astro';
 import { getBlogPost } from '../../data/blogPosts';
+import { ORGANIZATION } from '../../data/author';
 import { calculate } from '../../lib/calculator';
 import { buildGraph, organizationNode, articleNode, breadcrumbNode } from '../../lib/schema';
 
@@ -36,7 +38,9 @@ const replacement = calculate({
   region: 'national',
 });
 const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-const priorRepairs = 650 + 900 + 2200;
+const actuallySpent = 650 + 900;
+const latestQuote = 2200;
+const totalIfPaid = actuallySpent + latestQuote;
 ---
 
 <BaseLayout title={title} description={post.description}>
@@ -47,7 +51,7 @@ const priorRepairs = 650 + 900 + 2200;
     <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
 
     <p class="mt-6 text-body">
-      Suppose a homeowner spends $650 on a flashing leak, then $900 on a shingle patch two years later, on a 22-year-old, 1,800 sq ft asphalt roof. A couple of years after that, a roofer quotes $2,200 to fix a new leak around the chimney on the same roof. That's {usd(priorRepairs)} in repairs on one roof, and the leaks keep finding new spots. Run that same roof through the
+      Suppose a homeowner spends $650 on a flashing leak, then $900 on a shingle patch two years later, on a 22-year-old, 1,800 sq ft asphalt roof, {usd(actuallySpent)} spent on two repairs. A couple of years after that, a roofer quotes $2,200 to fix a new leak around the chimney on the same roof, a quote that would bring total repair spend to {usd(totalIfPaid)} if paid, and the leaks keep finding new spots. Run that same roof through the
       <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">replacement cost calculator</a>
       and a full reroof lands between {usd(replacement.low)} and {usd(replacement.high)}, with {usd(replacement.mid)} as the likely number. Nine signs separate a roof that needs one more patch from a roof that needs the whole thing torn off.
     </p>
@@ -94,7 +98,7 @@ const priorRepairs = 650 + 900 + 2200;
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">9. You've Already Paid for Two Repairs</h2>
     <p class="mt-4 text-body">
-      Every roof reaches a point where repairs stop paying for themselves. Two or more separate repair bills in the past two to three years is that point for most homeowners. Add up what you've spent, the way the hypothetical homeowner above did with {usd(priorRepairs)} across three repairs, and compare that total against a written replacement quote. The gap is often smaller than expected, and a third repair rarely buys more than another year before the next call.
+      Every roof reaches a point where repairs stop paying for themselves. Two or more separate repair bills in the past two to three years is that point for most homeowners. Add up what you've spent, the way the hypothetical homeowner above did with {usd(actuallySpent)} across two repairs before a third was even quoted, and compare that total, plus any new quote, against a written replacement quote. The gap is often smaller than expected, and a third repair rarely buys more than another year before the next call.
     </p>
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Check Your Own Roof Before You Call Anyone</h2>
@@ -113,4 +117,13 @@ const priorRepairs = 650 + 900 + 2200;
       <a href="/blog/roof-repair-vs-replacement/" class="text-link underline hover:text-link-deep">Roof Repair vs. Replacement: How to Decide</a>.
     </p>
   </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={post.datePublished}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
 </BaseLayout>

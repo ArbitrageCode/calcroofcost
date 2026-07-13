@@ -189,7 +189,7 @@ export function getPitchAdder(key: PitchKey): PitchRate {
   return pitch;
 }
 
-// Regional labor cost multipliers, applied to the full project cost.
+// Regional price multipliers, applied to the full project cost.
 //
 // Sources checked (per the Batch C research pass, 2026-07-12):
 // - https://www.roofcalc.org/regional-roofing-price-adjustments-in-us/
@@ -225,7 +225,8 @@ export type RegionKey =
 
 export interface RegionRate {
   key: RegionKey;
-  // Label per spec: "Region (adjusts labor cost)"
+  // Label per spec: "Region (adjusts total cost)" — source publishes total
+  // installed roofing price adjustments, not a labor-only figure.
   label: string;
   multiplier: number;
   sourceNote: string;

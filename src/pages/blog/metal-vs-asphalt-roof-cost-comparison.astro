@@ -1,7 +1,9 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import CitePage from '../../components/CitePage.astro';
 import { getBlogPost } from '../../data/blogPosts';
 import { getMaterial } from '../../data/rates';
+import { ORGANIZATION } from '../../data/author';
 import { calculate } from '../../lib/calculator';
 import { buildGraph, organizationNode, articleNode, breadcrumbNode } from '../../lib/schema';
 
@@ -151,4 +153,13 @@ const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', curren
       before you assume this example matches your roof.
     </p>
   </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={post.datePublished}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
 </BaseLayout>

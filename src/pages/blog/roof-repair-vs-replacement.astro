@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import CitePage from '../../components/CitePage.astro';
 import { getBlogPost } from '../../data/blogPosts';
+import { ORGANIZATION } from '../../data/author';
 import { calculate, DEFAULT_INPUTS } from '../../lib/calculator';
 import { buildGraph, organizationNode, articleNode, breadcrumbNode } from '../../lib/schema';
 
@@ -25,7 +27,9 @@ const jsonLd = buildGraph([
 
 const replacementExample = calculate(DEFAULT_INPUTS);
 const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-const priorRepairs = 650 + 900 + 2200;
+const actuallySpent = 650 + 900;
+const latestQuote = 2200;
+const totalIfPaid = actuallySpent + latestQuote;
 const halfRule = Math.round(replacementExample.mid / 2);
 ---
 
@@ -37,7 +41,7 @@ const halfRule = Math.round(replacementExample.mid / 2);
     <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink">{post.title}</h1>
 
     <p class="mt-6 text-body">
-      An 18-year-old asphalt roof gets a $2,200 quote to fix a chimney leak and replace a section of curling shingles nearby. The same roof already cost its owner $650 for a repair two years earlier and $900 the year before that. Three repairs, {usd(priorRepairs)} total, one roof, three years. Run that roof through the
+      An 18-year-old asphalt roof gets a $2,200 quote to fix a chimney leak and replace a section of curling shingles nearby. The same roof already cost its owner $650 for a repair two years earlier and $900 the year before that, {usd(actuallySpent)} actually spent on two repairs. The new quote would bring total repair spend to {usd(totalIfPaid)} if the owner pays it, two repairs done and a third on the table, one roof, three years. Run that roof through the
       <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">replacement cost calculator</a>
       at its default settings, a 2,000 sq ft asphalt roof, moderate pitch, one tear-off layer, an underlayment upgrade, and a full replacement lands between {usd(replacementExample.low)} and {usd(replacementExample.high)}. The $2,200 repair quote looks small next to that range. It stops looking small once you count the two repairs that came before it.
     </p>
@@ -72,7 +76,7 @@ const halfRule = Math.round(replacementExample.mid / 2);
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">The Three-Repair Roof, Worked Through</h2>
     <p class="mt-4 text-body">
-      Go back to the roof from the opening: 18 years old, {usd(priorRepairs)} spent across three repairs, a fresh $2,200 quote on the table. The 50% rule alone doesn't flag this one, since $2,200 sits nowhere near half of a {usd(replacementExample.mid)} replacement. Age, repeat repairs, and cumulative spend together tell a story that no single number tells on its own. A homeowner who tracks every repair bill in one place, even a simple note on a phone, spots this pattern faster than one who doesn't. This is the roof the checklist below exists for.
+      Go back to the roof from the opening: 18 years old, {usd(actuallySpent)} already spent across two repairs, a fresh $2,200 quote on the table for a third. The 50% rule alone doesn't flag this one, since $2,200 sits nowhere near half of a {usd(replacementExample.mid)} replacement. Age, repeat repairs, and cumulative spend together tell a story that no single number tells on its own. A homeowner who tracks every repair bill in one place, even a simple note on a phone, spots this pattern faster than one who doesn't. This is the roof the checklist below exists for.
     </p>
 
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">Insurance Changes the Calculation</h2>
@@ -94,4 +98,13 @@ const halfRule = Math.round(replacementExample.mid / 2);
       to build a real budget before contractor bids start arriving.
     </p>
   </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={post.datePublished}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
 </BaseLayout>

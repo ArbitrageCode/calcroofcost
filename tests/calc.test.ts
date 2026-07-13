@@ -160,6 +160,25 @@ describe('invariant: region multipliers match sourced values exactly', () => {
   });
 });
 
+describe('pinned default scenario (direct 2000, asphalt, moderate, 1 layer, underlayment, national)', () => {
+  it('matches the homepage default', () => {
+    const r = calculate({
+      areaMode: 'direct',
+      directSqft: 2000,
+      homeSqft: 2000,
+      stories: 1,
+      material: 'asphalt',
+      pitch: 'moderate',
+      tearOffLayers: 1,
+      underlayment: true,
+      region: 'national',
+    });
+    expect(r.low).toBe(8950);
+    expect(r.mid).toBe(10500);
+    expect(r.high).toBe(12100);
+  });
+});
+
 describe('invariant: out-of-range area returns an error and zeroed numbers', () => {
   it('rejects area below MIN_ROOF_AREA_SQFT', () => {
     const r = calculate({ ...BASE, areaMode: 'direct', directSqft: 0 });

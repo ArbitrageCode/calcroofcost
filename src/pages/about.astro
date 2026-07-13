@@ -41,8 +41,9 @@ const jsonLd = buildGraph([
     <h2 class="mt-10 text-xl font-semibold tracking-tight text-ink">How the Math Works</h2>
     <p class="mt-4 text-body">
       Roof area converts to &ldquo;squares&rdquo; (100 sq ft each), then a per-square material rate,
-      a tear-off rate, and an underlayment rate are applied and summed into a subtotal. A regional
-      labor multiplier adjusts that subtotal, and a symmetric 0.85x&ndash;1.15x spread around the
+      a per-square steep-pitch labor surcharge, a tear-off rate, and an underlayment rate are applied
+      and summed into a subtotal. A regional price multiplier adjusts that subtotal, and a symmetric
+      0.85x&ndash;1.15x spread around the
       result produces the Low and High bounds around the Mid estimate. The full step-by-step
       breakdown, with a worked example, is on the
       <a href="/#calculator-heading" class="text-link underline hover:text-link-deep">calculator page</a>
@@ -63,13 +64,16 @@ const jsonLd = buildGraph([
         <strong>Material cost per square</strong>: <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>
       </li>
       <li>
+        <strong>Steep-pitch labor surcharge</strong>: <a href="https://www.squaredash.com/cost/labor/" class="text-link underline hover:text-link-deep">squaredash.com/cost/labor/</a>
+      </li>
+      <li>
         <strong>Tear-off cost per layer</strong>: <a href="https://squaredash.com/cost/tear-off/" class="text-link underline hover:text-link-deep">squaredash.com/cost/tear-off/</a>
       </li>
       <li>
         <strong>Underlayment upgrade cost</strong>: <a href="https://fixr.com/costs/roof-underlayment-replacement" class="text-link underline hover:text-link-deep">fixr.com/costs/roof-underlayment-replacement</a>
       </li>
       <li>
-        <strong>Regional labor multipliers</strong>: <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>
+        <strong>Regional price multipliers</strong>: <a href="https://roofcalc.org" class="text-link underline hover:text-link-deep">roofcalc.org</a>
       </li>
     </ul>
 
