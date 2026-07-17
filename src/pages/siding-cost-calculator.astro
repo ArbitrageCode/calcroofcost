@@ -1,0 +1,624 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTASlot from '../components/CTASlot.astro';
+import CitePage from '../components/CitePage.astro';
+import ShareResult from '../components/ShareResult.astro';
+import { SIDING_MATERIALS, ASSUMED_WALL_HEIGHT_PER_STORY_FT } from '../data/sidingRates';
+import { ORGANIZATION } from '../data/author';
+import { calculateSiding, SIDING_DEFAULT_INPUTS } from '../lib/sidingCalculator';
+import { buildGraph, organizationNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
+
+const PAGE_PATH = '/siding-cost-calculator/';
+const DATE_PUBLISHED = '2026-07-17';
+
+const title = 'Siding Cost Calculator (2026) | CalcRoofCost.com';
+const description =
+  "Estimate your siding installation cost in seconds. Enter your wall area (or home perimeter and stories), pick a material from vinyl to stucco, and get an instant Low/Mid/High price breakdown.";
+
+const defaultResult = calculateSiding(SIDING_DEFAULT_INPUTS);
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+const vinylRate = SIDING_MATERIALS.find((m) => m.key === 'vinyl')!;
+const stuccoRate = SIDING_MATERIALS.find((m) => m.key === 'stucco')!;
+
+const FAQS = [
+  {
+    question: 'How much does siding cost on average?',
+    answer:
+      "A 2,000 sq ft wall area in vinyl siding, the most common choice, runs $11,900 to $16,100 at this calculator's blended national rate, with a $14,000 midpoint. Fiber cement, wood, and stucco all run more per square foot.",
+  },
+  {
+    question: 'What is the cheapest siding material?',
+    answer:
+      'Vinyl is the least expensive siding material per square foot, followed closely by aluminum. Fiber cement costs more, wood more still, and stucco sits at the top of the five materials this calculator prices.',
+  },
+  {
+    question: "How do I estimate my home's wall area for siding?",
+    answer:
+      "If you don't have a measured wall area, multiply your home's perimeter in linear feet by 10 feet per story, a standard rule of thumb for estimating wall square footage. A 200-linear-foot perimeter on a single-story home works out to roughly 2,000 sq ft of wall area, which is why that scenario is this calculator's default.",
+  },
+  {
+    question: 'Does this calculator include removal of my old siding?',
+    answer:
+      "No. These rates are installed material and labor for new siding only. Tear-off and disposal of existing siding is a separate cost this calculator doesn't price, since neither of this page's rate sources publishes a comparable removal figure.",
+  },
+  {
+    question: "Why aren't engineered wood or steel siding included as options?",
+    answer:
+      "Both are real siding materials, but neither is covered by both of this page's rate sources in a comparable way, and every material that is included here clears a 2-source blend bar. Rather than estimate from a single source, this calculator leaves both out until a second corroborating source is found.",
+  },
+  {
+    question: 'Does the number of stories affect siding cost?',
+    answer:
+      'Yes, when you estimate from your home’s perimeter: a 2-story home has roughly twice the wall area of a 1-story home with the same footprint perimeter, since siding wraps both stories. If you enter your wall area directly from a measurement, stories has no separate effect beyond whatever you already measured.',
+  },
+];
+
+const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: title,
+    description,
+    datePublished: DATE_PUBLISHED,
+  }),
+  faqNode(FAQS),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Siding Cost Calculator', path: PAGE_PATH },
+  ]),
+]);
+---
+
+<BaseLayout title={title} description={description}>
+  <script>
+    import { calculateSiding, decodeSidingInputs, type SidingCalculatorInputs, type SidingAreaMode, type SidingStories } from '../lib/sidingCalculator';
+    import type { SidingMaterialKey } from '../data/sidingRates';
+
+    const currency = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    });
+
+    const form = document.getElementById('siding-calculator-form') as HTMLFormElement;
+    const directFields = document.getElementById('area-mode-direct-fields')!;
+    const perimeterFields = document.getElementById('area-mode-perimeter-fields')!;
+
+    function readInputs(): SidingCalculatorInputs {
+      const areaMode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value as SidingAreaMode;
+      return {
+        areaMode,
+        wallSqft: Number((document.getElementById('wall-sqft') as HTMLInputElement).value) || 0,
+        perimeter: Number((document.getElementById('perimeter') as HTMLInputElement).value) || 0,
+        stories: Number((document.querySelector('input[name="stories"]:checked') as HTMLInputElement).value) as SidingStories,
+        material: (document.getElementById('material') as HTMLSelectElement).value as SidingMaterialKey,
+      };
+    }
+
+    function applyInputs(inputs: SidingCalculatorInputs) {
+      (document.getElementById(inputs.areaMode === 'direct' ? 'area-mode-direct' : 'area-mode-perimeter') as HTMLInputElement).checked = true;
+      (document.getElementById('wall-sqft') as HTMLInputElement).value = String(inputs.wallSqft);
+      (document.getElementById('perimeter') as HTMLInputElement).value = String(inputs.perimeter);
+      (document.getElementById(inputs.stories === 2 ? 'stories-2' : 'stories-1') as HTMLInputElement).checked = true;
+      (document.getElementById('material') as HTMLSelectElement).value = inputs.material;
+      updateAreaModeVisibility();
+    }
+
+    function updateAreaModeVisibility() {
+      const mode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value;
+      directFields.classList.toggle('hidden', mode !== 'direct');
+      perimeterFields.classList.toggle('hidden', mode !== 'perimeter');
+    }
+
+    function render() {
+      const inputs = readInputs();
+      const result = calculateSiding(inputs);
+      const errorEl = document.getElementById('result-error')!;
+      const numbersEl = document.getElementById('results-numbers')!;
+
+      if (result.error) {
+        errorEl.textContent = result.error;
+        errorEl.classList.remove('hidden');
+        numbersEl.classList.add('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+        numbersEl.classList.remove('hidden');
+        document.getElementById('result-low')!.textContent = currency.format(result.low);
+        document.getElementById('result-mid')!.textContent = currency.format(result.mid);
+        document.getElementById('result-high')!.textContent = currency.format(result.high);
+        document.getElementById('bd-material')!.textContent = currency.format(result.lineItems.materialCost);
+        document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
+        document.getElementById('bd-area')!.textContent = result.wallAreaSqft.toLocaleString('en-US');
+      }
+
+      window.dispatchEvent(new CustomEvent('sidingcalc:inputs-changed', { detail: inputs }));
+      return { inputs, result };
+    }
+
+    form.addEventListener('input', () => {
+      updateAreaModeVisibility();
+      render();
+    });
+
+    window.addEventListener('sidingcalc:restore-inputs', (event) => {
+      applyInputs((event as CustomEvent<SidingCalculatorInputs>).detail);
+      render();
+    });
+
+    const pendingRestore = (window as unknown as { __pendingRestore?: Record<string, SidingCalculatorInputs> }).__pendingRestore?.sidingcalc;
+    if (pendingRestore) {
+      applyInputs(pendingRestore);
+    }
+
+    const statusEl = document.getElementById('result-action-status')!;
+
+    document.getElementById('copy-result-button')?.addEventListener('click', async () => {
+      const { result } = render();
+      const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+      const summary = [
+        'Siding Cost Estimate',
+        'CalcRoofCost.com',
+        `Material: ${materialLabel}`,
+        `Wall area: ${result.wallAreaSqft.toLocaleString('en-US')} sq ft`,
+        `Low: ${currency.format(result.low)}`,
+        `Mid: ${currency.format(result.mid)}`,
+        `High: ${currency.format(result.high)}`,
+      ].join('\n');
+      await navigator.clipboard.writeText(summary);
+      statusEl.textContent = 'Result copied to clipboard!';
+      window.setTimeout(() => (statusEl.textContent = ''), 2500);
+    });
+
+    document.getElementById('download-summary-button')?.addEventListener('click', () => {
+      const { result } = render();
+      const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+      const lines = [
+        'Siding Cost Estimate',
+        'CalcRoofCost.com',
+        '',
+        `Material: ${materialLabel}`,
+        `Wall area: ${result.wallAreaSqft.toLocaleString('en-US')} sq ft`,
+        '',
+        `Material & Install: ${currency.format(result.lineItems.materialCost)}`,
+        `Subtotal: ${currency.format(result.subtotal)}`,
+        '',
+        `Low estimate: ${currency.format(result.low)}`,
+        `Mid estimate: ${currency.format(result.mid)}`,
+        `High estimate: ${currency.format(result.high)}`,
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'siding-cost-estimate.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    updateAreaModeVisibility();
+    render();
+  </script>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <section class="mx-auto max-w-4xl px-4 pt-12 pb-8 sm:px-6 sm:pt-16">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+      Siding Cost Calculator
+    </h1>
+    <p class="mt-4 max-w-2xl text-lg text-body">
+      Get an instant Low / Mid / High estimate for siding installation. Enter your wall area
+      directly, or your home&rsquo;s perimeter and stories, pick a material, and see how the price
+      changes.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6" aria-labelledby="calculator-heading">
+    <h2 id="calculator-heading" class="sr-only">Calculator</h2>
+    <div class="grid gap-6 rounded-xl border border-hairline bg-canvas p-6 shadow-sm sm:p-8 lg:grid-cols-2">
+      <form id="siding-calculator-form" class="space-y-6">
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">How do you want to enter wall area?</legend>
+          <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-direct" value="direct" checked class="h-4 w-4" />
+              Enter wall area directly
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-perimeter" value="perimeter" class="h-4 w-4" />
+              Estimate from perimeter
+            </label>
+          </div>
+        </fieldset>
+
+        <div id="area-mode-direct-fields">
+          <label for="wall-sqft" class="block text-sm font-medium text-ink">Wall Area (sq ft)</label>
+          <input
+            type="number"
+            id="wall-sqft"
+            name="wall-sqft"
+            min="0"
+            step="50"
+            inputmode="numeric"
+            autocomplete="off"
+            value={SIDING_DEFAULT_INPUTS.wallSqft}
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          />
+        </div>
+
+        <div id="area-mode-perimeter-fields" class="hidden">
+          <label for="perimeter" class="block text-sm font-medium text-ink">Home Perimeter (linear feet)</label>
+          <input
+            type="number"
+            id="perimeter"
+            name="perimeter"
+            min="0"
+            step="10"
+            inputmode="numeric"
+            autocomplete="off"
+            value={SIDING_DEFAULT_INPUTS.perimeter}
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          />
+          <p class="mt-1 text-xs text-mute">We multiply by {ASSUMED_WALL_HEIGHT_PER_STORY_FT} ft per story to estimate wall area.</p>
+        </div>
+
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">Home Stories</legend>
+          <div class="mt-2 flex gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="stories" id="stories-1" value="1" checked class="h-4 w-4" />
+              1 Story
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="stories" id="stories-2" value="2" class="h-4 w-4" />
+              2 Stories
+            </label>
+          </div>
+          <p class="mt-1 text-xs text-mute">Only affects the price in &ldquo;Estimate from perimeter&rdquo; mode.</p>
+        </fieldset>
+
+        <div>
+          <label for="material" class="block text-sm font-medium text-ink">Siding Material</label>
+          <select
+            id="material"
+            name="material"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {SIDING_MATERIALS.map((m) => (
+              <option value={m.key} selected={m.key === SIDING_DEFAULT_INPUTS.material}>
+                {m.label} (${m.costPerSqft}/sq ft installed)
+              </option>
+            ))}
+          </select>
+        </div>
+      </form>
+
+      <div class="rounded-lg bg-canvas-soft-2 p-6" aria-live="polite">
+        <p class="text-sm font-medium text-body">Estimated Cost</p>
+        <p id="result-error" class="mt-2 hidden text-sm text-error" role="alert"></p>
+        <div id="results-numbers">
+        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Low</p>
+            <p id="result-low" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.low)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Mid</p>
+            <p id="result-mid" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.mid)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">High</p>
+            <p id="result-high" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.high)}
+            </p>
+          </div>
+        </div>
+
+        <table class="mt-6 w-full text-sm">
+          <caption class="sr-only">Itemized cost breakdown</caption>
+          <thead>
+            <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+              <th scope="col" class="py-2 font-medium">Line Item</th>
+              <th scope="col" class="py-2 text-right font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Material &amp; Install</td>
+              <td id="bd-material" class="tabular-nums py-2 text-right text-ink">
+                {usd(defaultResult.lineItems.materialCost)}
+              </td>
+            </tr>
+            <tr>
+              <td class="py-2 font-medium text-ink">Subtotal</td>
+              <td id="bd-subtotal" class="tabular-nums py-2 text-right font-medium text-ink">
+                {usd(defaultResult.subtotal)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="mt-4 text-xs text-mute">
+          Wall area used: <span id="bd-area" class="tabular-nums">{defaultResult.wallAreaSqft.toLocaleString('en-US')}</span> sq ft
+        </p>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            id="copy-result-button"
+            class="rounded-full bg-ink px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Copy Result
+          </button>
+          <button
+            type="button"
+            id="download-summary-button"
+            class="rounded-full border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Download Summary
+          </button>
+        </div>
+        <span id="result-action-status" class="mt-2 block text-sm text-success" aria-live="polite"></span>
+
+        <div class="mt-6 border-t border-hairline pt-6">
+          <ShareResult calculator="siding" />
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-4 text-xs text-mute">
+      This is a directional planning estimate, not a site-specific quote. Wall complexity, window
+      and door cutouts, and local labor rates can move a contractor&rsquo;s actual bid.
+    </p>
+
+    <details class="group mt-6 rounded-lg border border-hairline p-4">
+      <summary class="cursor-pointer list-none text-sm font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+        How we calculate this
+      </summary>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-body">
+        <li>
+          Each material&rsquo;s per-square-foot rate is a complete installed price: material and
+          labor, blended from two independent sources&rsquo; own midpoints, rounded to the nearest
+          $0.50.
+        </li>
+        <li>
+          If you don&rsquo;t know your wall area, switch to &ldquo;Estimate from
+          perimeter&rdquo; and enter your home&rsquo;s perimeter in linear feet. We multiply by
+          {ASSUMED_WALL_HEIGHT_PER_STORY_FT} ft per story, a rule of thumb one of this page&rsquo;s
+          rate sources publishes directly.
+        </li>
+        <li>
+          This is WALL area, not roof area: siding wraps the sides of your home, not the roof
+          surface, so this calculator builds its own area logic instead of reusing the roof
+          replacement calculator&rsquo;s footprint-to-roof-area geometry, which answers a different
+          question.
+        </li>
+        <li>
+          Engineered wood and steel siding are intentionally left off the material list; see the
+          Methodology section below for why.
+        </li>
+        <li>
+          This is a planning estimate, not a quote. Get 2&ndash;3 bids from licensed local
+          contractors before budgeting against these numbers.
+        </li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6">
+    <CTASlot label="Get matched with a local siding contractor" />
+  </section>
+
+  <article class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <h2 class="text-2xl font-semibold tracking-tight text-ink">How This Calculator Works</h2>
+    <p class="mt-4 text-body">
+      This calculator prices siding by multiplying your home&rsquo;s wall area by a
+      per-square-foot installed rate for the material you pick. Enter your wall area directly if
+      you have a measurement or an old quote, or switch to &ldquo;Estimate from perimeter&rdquo;
+      and enter your home&rsquo;s perimeter in linear feet along with its number of stories.
+      Perimeter mode multiplies your perimeter by {ASSUMED_WALL_HEIGHT_PER_STORY_FT} feet for
+      every story, an assumed wall height per story that one of this page&rsquo;s rate sources
+      publishes as its own standard method. A 200-linear-foot perimeter on a single story home
+      works out to 2,000 sq ft of wall area, which is why that scenario is this calculator&rsquo;s
+      default. On a 2-story home, the same perimeter doubles to roughly 4,000 sq ft, since siding
+      has to wrap both stories, not just the ground floor.
+    </p>
+    <p class="mt-4 text-body">
+      Siding is priced by wall area, not roof area, which is a different surface entirely from
+      what this site&rsquo;s roof replacement and metal roof calculators price. This calculator
+      doesn&rsquo;t reuse either of those tools&rsquo; footprint-to-roof-area geometry, which
+      converts a home&rsquo;s footprint into sloped roof surface area using pitch; that math
+      answers a roofing question, not a siding one. Material choice is the biggest lever on price
+      here: vinyl is the cheapest and most common option, aluminum runs close behind it, fiber
+      cement and wood cost more, and stucco sits at the top.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Methodology</h2>
+    <p class="mt-4 text-body">
+      Every number on this page links to where it came from. Four of five material rates blend two
+      independent sources&rsquo; own midpoints, rounded to the nearest $0.50; wood is
+      single-sourced, disclosed below. Figures verified July 2026.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Material Installation Rates</h3>
+    <p class="mt-2 text-body">
+      Two sources, each publishing a price-per-square-foot range by siding material:
+      <a href="https://hover.to/blog/house-siding-cost" class="text-link underline hover:text-link-deep">hover.to/blog/house-siding-cost</a>,
+      checked 2026-07-17 (published 2026-01-05), and
+      <a href="https://modernize.com/siding/cost-calculator" class="text-link underline hover:text-link-deep">modernize.com/siding/cost-calculator</a>,
+      checked 2026-07-17 (2026 per-material table). Each material&rsquo;s rate below is the average
+      of the two sources&rsquo; own midpoints, rounded to the nearest $0.50:
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">Material</th>
+            <th scope="col" class="py-2 text-right font-medium">Hover.to</th>
+            <th scope="col" class="py-2 text-right font-medium">Modernize</th>
+            <th scope="col" class="py-2 text-right font-medium">Blended Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Vinyl</td>
+            <td class="tabular-nums py-2 text-right text-ink">$4&ndash;12/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$4.50&ndash;8.20/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$7.00/sq ft</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Aluminum</td>
+            <td class="tabular-nums py-2 text-right text-ink">$6&ndash;10/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$5.60&ndash;10.30/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$8.00/sq ft</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Fiber Cement</td>
+            <td class="tabular-nums py-2 text-right text-ink">$6&ndash;15/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$4.70&ndash;8.50/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$8.50/sq ft</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Wood</td>
+            <td class="tabular-nums py-2 text-right text-ink">excluded, range too wide</td>
+            <td class="tabular-nums py-2 text-right text-ink">$6.90&ndash;13.90/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$10.40/sq ft</td>
+          </tr>
+          <tr>
+            <td class="py-2 text-body">Stucco</td>
+            <td class="tabular-nums py-2 text-right text-ink">$7&ndash;17/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$9.30&ndash;16.90/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$12.50/sq ft</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-sm text-body">
+      Wood is single-sourced to Modernize: Hover.to&rsquo;s published wood range was too wide to
+      treat as comparable to the other four materials, so rather than force an average against a
+      range that wide, this calculator uses Modernize&rsquo;s own midpoint directly with no
+      blending.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Perimeter-to-Wall-Area Rule</h3>
+    <p class="mt-2 text-body">
+      Modernize (same URL above) states its standard method for estimating wall square footage
+      from a home&rsquo;s perimeter: multiply perimeter by {ASSUMED_WALL_HEIGHT_PER_STORY_FT} feet
+      per story. This calculator uses that same rule whenever you estimate from perimeter instead
+      of entering a measured wall area directly.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Why Engineered Wood and Steel Are Omitted</h3>
+    <p class="mt-2 text-body">
+      Engineered wood and steel siding are both real, commonly quoted materials, but neither
+      appears as an option on this page. Neither is covered by both rate sources above in a way
+      that supports a comparable 2-source blend, and every material that is included here clears
+      that bar. Rather than estimate a rate from a single source, or substitute a similar
+      material&rsquo;s figure as a stand-in, this calculator leaves both out until a second
+      corroborating source is found.
+    </p>
+
+    <p class="mt-6 text-sm text-mute">
+      Methodology last updated {DATE_PUBLISHED}. Every rate and blend above lives as a
+      <code class="font-mono-caption text-xs">sourceNote</code> next to its value in this
+      site&rsquo;s underlying rate data. Found a source that&rsquo;s gone stale or a blend you
+      think is wrong? <a href="/contact/" class="text-link underline hover:text-link-deep">Contact us</a>
+      with the page and the number.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">What Drives Siding Cost</h2>
+    <p class="mt-4 text-body">
+      <strong>Material</strong> is the dominant factor, the same way it is for roofing. Vinyl
+      stays the cheapest and most common option for a reason: low material cost, straightforward
+      installation, and minimal maintenance. Fiber cement and wood both cost more and each brings
+      its own maintenance profile, fiber cement for its weight and cutting requirements, wood for
+      ongoing painting or staining. Stucco costs the most per square foot here and is typically
+      chosen for climate and architectural style reasons as much as for looks.
+    </p>
+    <p class="mt-4 text-body">
+      <strong>Wall area</strong> scales the bill directly, and it&rsquo;s worth getting right:
+      an inaccurate perimeter estimate compounds across your entire home&rsquo;s exterior, unlike
+      a single mismeasured room. <strong>Stories</strong> only matters in perimeter mode, where it
+      roughly doubles wall area for a 2-story home versus a 1-story home with the same footprint
+      perimeter. Homeowners who are already planning a
+      <a href="/blog/roof-repair-vs-replacement/" class="text-link underline hover:text-link-deep">roof replacement</a>
+      often time siding work to the same project, since both jobs need scaffolding or staging
+      around the exterior of the home.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Worked Example</h2>
+    <p class="mt-4 text-body">
+      Take this calculator&rsquo;s own default scenario: a 2,000 sq ft wall area entered directly,
+      vinyl siding. That&rsquo;s 2,000 sq ft at ${vinylRate.costPerSqft.toFixed(2)} per sq ft, or
+      {usd(defaultResult.lineItems.materialCost)}. Apply the Low/High spread (0.85x to 1.15x, the
+      same symmetric band used across this site&rsquo;s calculators) and you get a Low estimate of
+      {usd(defaultResult.low)}, a High estimate of {usd(defaultResult.high)}, and a
+      {usd(defaultResult.mid)} midpoint to budget around. Switch that same wall area to stucco at
+      ${stuccoRate.costPerSqft.toFixed(2)}/sq ft and the subtotal climbs to $25,000. Move a
+      2-story home&rsquo;s 200-linear-foot perimeter into &ldquo;Estimate from perimeter&rdquo;
+      mode and wall area doubles to roughly 4,000 sq ft, which doubles the price at any material.
+      Try it above with your own home&rsquo;s numbers.
+    </p>
+  </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={DATE_PUBLISHED}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6" aria-labelledby="faq-heading">
+    <h2 id="faq-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Frequently Asked Questions
+    </h2>
+    <div class="mt-4 divide-y divide-hairline">
+      {FAQS.map((faq) => (
+        <details class="group py-4">
+          <summary class="cursor-pointer list-none text-base font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+            {faq.question}
+          </summary>
+          <p class="mt-2 text-sm text-body" set:html={faq.answerHtml ?? faq.answer} />
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-20 sm:px-6" aria-labelledby="related-heading">
+    <h2 id="related-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Related Calculators &amp; Guides
+    </h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <a
+        href="/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Roof Replacement Cost Calculator
+      </a>
+      <a
+        href="/gutter-installation-cost-calculator/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Gutter Installation Cost Calculator
+      </a>
+      <a
+        href="/metal-roof-cost-calculator/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Metal Roof Cost Calculator
+      </a>
+      <a
+        href="/blog/roof-repair-vs-replacement/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Roof Repair vs. Replacement: How to Decide
+      </a>
+    </div>
+  </section>
+</BaseLayout>

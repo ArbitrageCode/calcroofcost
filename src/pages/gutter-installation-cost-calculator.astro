@@ -1,0 +1,620 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTASlot from '../components/CTASlot.astro';
+import CitePage from '../components/CitePage.astro';
+import ShareResult from '../components/ShareResult.astro';
+import { GUTTER_MATERIALS, STORY_SURCHARGE_PER_LF, SQFT_TO_LF_DIVISOR } from '../data/gutterRates';
+import { ORGANIZATION } from '../data/author';
+import { calculateGutter, GUTTER_DEFAULT_INPUTS } from '../lib/gutterCalculator';
+import { buildGraph, organizationNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
+
+const PAGE_PATH = '/gutter-installation-cost-calculator/';
+const DATE_PUBLISHED = '2026-07-17';
+
+const title = 'Gutter Installation Cost Calculator (2026) | CalcRoofCost.com';
+const description =
+  "Estimate your gutter installation cost in seconds. Enter your home's linear footage (or roof area), pick a material, and get an instant Low/Mid/High price breakdown, downspouts and hardware included.";
+
+const defaultResult = calculateGutter(GUTTER_DEFAULT_INPUTS);
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+const FAQS = [
+  {
+    question: 'How much does gutter installation cost on average?',
+    answer:
+      "A typical 160-linear-foot aluminum gutter installation on a single-story home runs $2,176 to $2,944, with a $2,560 midpoint, downspouts, hardware, and labor included. Vinyl runs cheaper, steel and copper run more, and a two-story home adds a labor surcharge on top of the material cost.",
+  },
+  {
+    question: 'What is the cheapest gutter material?',
+    answer:
+      'Vinyl is the least expensive gutter material to install, followed by aluminum, then steel, with copper at the premium end. Aluminum is the most common choice because it balances cost against durability and low maintenance.',
+  },
+  {
+    question: 'Does the cost of gutter installation include downspouts?',
+    answer:
+      "Yes, in this calculator's rates. The per-linear-foot installed price for every material already includes downspouts, end caps, hangers, and labor as part of a complete gutter system, so you don't need to add a separate downspout line item.",
+  },
+  {
+    question: 'How much more does gutter installation cost on a two-story home?',
+    answer:
+      'A two-story home adds roughly $2 per linear foot on top of the base material rate, reflecting the extra time, ladder work, and safety setup second-story gutter runs require. A one-story home carries no such surcharge.',
+  },
+  {
+    question: 'How many linear feet of gutter does my house need?',
+    answer:
+      "A common rule of thumb is to divide your home's total roof or footprint square footage by 10 to estimate linear feet of gutter needed. A 1,600 sq ft home, for example, typically needs around 160 linear feet of gutter, though rooflines with more corners or dormers can need more.",
+  },
+  {
+    question: 'Should I replace my gutters when I replace my roof?',
+    answer:
+      "Not automatically, but it's worth inspecting them at the same time. Old, sagging, or rusted gutters, or ones that no longer match a new roofline's drip edge, are worth replacing during a roof job to avoid a second round of ladder work. See our Repair vs. Replace guide for how to make that call on the roof itself.",
+    answerHtml:
+      "Not automatically, but it's worth inspecting them at the same time. Old, sagging, or rusted gutters, or ones that no longer match a new roofline's drip edge, are worth replacing during a roof job to avoid a second round of ladder work. See our <a href=\"/blog/roof-repair-vs-replacement/\" class=\"text-link underline hover:text-link-deep\">Repair vs. Replace guide</a> for how to make that call on the roof itself.",
+  },
+];
+
+const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: title,
+    description,
+    datePublished: DATE_PUBLISHED,
+  }),
+  faqNode(FAQS),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Gutter Installation Cost Calculator', path: PAGE_PATH },
+  ]),
+]);
+---
+
+<BaseLayout title={title} description={description}>
+  <script>
+    import { calculateGutter, decodeGutterInputs, type GutterCalculatorInputs, type GutterAreaMode, type GutterStories } from '../lib/gutterCalculator';
+    import type { GutterMaterialKey } from '../data/gutterRates';
+
+    const currency = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    });
+
+    const form = document.getElementById('gutter-calculator-form') as HTMLFormElement;
+    const directFields = document.getElementById('area-mode-direct-fields')!;
+    const sqftFields = document.getElementById('area-mode-sqft-fields')!;
+
+    function readInputs(): GutterCalculatorInputs {
+      const areaMode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value as GutterAreaMode;
+      return {
+        areaMode,
+        directLf: Number((document.getElementById('direct-lf') as HTMLInputElement).value) || 0,
+        sqft: Number((document.getElementById('area-sqft') as HTMLInputElement).value) || 0,
+        material: (document.getElementById('material') as HTMLSelectElement).value as GutterMaterialKey,
+        stories: Number((document.querySelector('input[name="stories"]:checked') as HTMLInputElement).value) as GutterStories,
+      };
+    }
+
+    function applyInputs(inputs: GutterCalculatorInputs) {
+      (document.getElementById(inputs.areaMode === 'direct' ? 'area-mode-direct' : 'area-mode-sqft') as HTMLInputElement).checked = true;
+      (document.getElementById('direct-lf') as HTMLInputElement).value = String(inputs.directLf);
+      (document.getElementById('area-sqft') as HTMLInputElement).value = String(inputs.sqft);
+      (document.getElementById('material') as HTMLSelectElement).value = inputs.material;
+      (document.getElementById(inputs.stories === 2 ? 'stories-2' : 'stories-1') as HTMLInputElement).checked = true;
+      updateAreaModeVisibility();
+    }
+
+    function updateAreaModeVisibility() {
+      const mode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value;
+      directFields.classList.toggle('hidden', mode !== 'direct');
+      sqftFields.classList.toggle('hidden', mode !== 'sqft');
+    }
+
+    function render() {
+      const inputs = readInputs();
+      const result = calculateGutter(inputs);
+      const errorEl = document.getElementById('result-error')!;
+      const numbersEl = document.getElementById('results-numbers')!;
+
+      if (result.error) {
+        errorEl.textContent = result.error;
+        errorEl.classList.remove('hidden');
+        numbersEl.classList.add('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+        numbersEl.classList.remove('hidden');
+        document.getElementById('result-low')!.textContent = currency.format(result.low);
+        document.getElementById('result-mid')!.textContent = currency.format(result.mid);
+        document.getElementById('result-high')!.textContent = currency.format(result.high);
+        document.getElementById('bd-material')!.textContent = currency.format(result.lineItems.materialCost);
+        document.getElementById('bd-story-row')!.classList.toggle('hidden', result.lineItems.storySurchargeCost <= 0);
+        document.getElementById('bd-story')!.textContent = currency.format(result.lineItems.storySurchargeCost);
+        document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
+        document.getElementById('bd-lf')!.textContent = result.lf.toLocaleString('en-US');
+      }
+
+      window.dispatchEvent(new CustomEvent('guttercalc:inputs-changed', { detail: inputs }));
+      return { inputs, result };
+    }
+
+    form.addEventListener('input', () => {
+      updateAreaModeVisibility();
+      render();
+    });
+
+    window.addEventListener('guttercalc:restore-inputs', (event) => {
+      applyInputs((event as CustomEvent<GutterCalculatorInputs>).detail);
+      render();
+    });
+
+    const pendingRestore = (window as unknown as { __pendingRestore?: Record<string, GutterCalculatorInputs> }).__pendingRestore?.guttercalc;
+    if (pendingRestore) {
+      applyInputs(pendingRestore);
+    }
+
+    const statusEl = document.getElementById('result-action-status')!;
+
+    document.getElementById('copy-result-button')?.addEventListener('click', async () => {
+      const { result } = render();
+      const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+      const summary = [
+        'Gutter Installation Cost Estimate',
+        'CalcRoofCost.com',
+        `Material: ${materialLabel}`,
+        `Gutter run: ${result.lf.toLocaleString('en-US')} linear feet`,
+        `Low: ${currency.format(result.low)}`,
+        `Mid: ${currency.format(result.mid)}`,
+        `High: ${currency.format(result.high)}`,
+      ].join('\n');
+      await navigator.clipboard.writeText(summary);
+      statusEl.textContent = 'Result copied to clipboard!';
+      window.setTimeout(() => (statusEl.textContent = ''), 2500);
+    });
+
+    document.getElementById('download-summary-button')?.addEventListener('click', () => {
+      const { result } = render();
+      const materialLabel = (document.getElementById('material') as HTMLSelectElement).selectedOptions[0].textContent;
+      const lines = [
+        'Gutter Installation Cost Estimate',
+        'CalcRoofCost.com',
+        '',
+        `Material: ${materialLabel}`,
+        `Gutter run: ${result.lf.toLocaleString('en-US')} linear feet`,
+        '',
+        `Material & Install: ${currency.format(result.lineItems.materialCost)}`,
+        ...(result.lineItems.storySurchargeCost > 0
+          ? [`2-Story Labor Surcharge: ${currency.format(result.lineItems.storySurchargeCost)}`]
+          : []),
+        `Subtotal: ${currency.format(result.subtotal)}`,
+        '',
+        `Low estimate: ${currency.format(result.low)}`,
+        `Mid estimate: ${currency.format(result.mid)}`,
+        `High estimate: ${currency.format(result.high)}`,
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'gutter-installation-cost-estimate.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    updateAreaModeVisibility();
+    render();
+  </script>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <section class="mx-auto max-w-4xl px-4 pt-12 pb-8 sm:px-6 sm:pt-16">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+      Gutter Installation Cost Calculator
+    </h1>
+    <p class="mt-4 max-w-2xl text-lg text-body">
+      Get an instant Low / Mid / High estimate for gutter installation. Enter your gutter run in
+      linear feet (or your roof/home area), pick a material, and adjust for a two-story home to
+      match your project. Downspouts and hardware are included.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6" aria-labelledby="calculator-heading">
+    <h2 id="calculator-heading" class="sr-only">Calculator</h2>
+    <div class="grid gap-6 rounded-xl border border-hairline bg-canvas p-6 shadow-sm sm:p-8 lg:grid-cols-2">
+      <form id="gutter-calculator-form" class="space-y-6">
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">How do you want to enter gutter length?</legend>
+          <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-direct" value="direct" checked class="h-4 w-4" />
+              Enter linear feet directly
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-sqft" value="sqft" class="h-4 w-4" />
+              Estimate from roof/home area
+            </label>
+          </div>
+        </fieldset>
+
+        <div id="area-mode-direct-fields">
+          <label for="direct-lf" class="block text-sm font-medium text-ink">Gutter Run (linear feet)</label>
+          <input
+            type="number"
+            id="direct-lf"
+            name="direct-lf"
+            min="0"
+            step="10"
+            inputmode="numeric"
+            autocomplete="off"
+            value={GUTTER_DEFAULT_INPUTS.directLf}
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          />
+        </div>
+
+        <div id="area-mode-sqft-fields" class="hidden">
+          <label for="area-sqft" class="block text-sm font-medium text-ink">Roof/Home Area (sq ft)</label>
+          <input
+            type="number"
+            id="area-sqft"
+            name="area-sqft"
+            min="0"
+            step="100"
+            inputmode="numeric"
+            autocomplete="off"
+            value={GUTTER_DEFAULT_INPUTS.sqft}
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          />
+          <p class="mt-1 text-xs text-mute">We divide by {SQFT_TO_LF_DIVISOR} to estimate linear feet of gutter.</p>
+        </div>
+
+        <div>
+          <label for="material" class="block text-sm font-medium text-ink">Gutter Material</label>
+          <select
+            id="material"
+            name="material"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {GUTTER_MATERIALS.map((m) => (
+              <option value={m.key} selected={m.key === GUTTER_DEFAULT_INPUTS.material}>
+                {m.label} (${m.costPerLf}/LF installed)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">Home Stories</legend>
+          <div class="mt-2 flex gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="stories" id="stories-1" value="1" checked class="h-4 w-4" />
+              1 Story
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="stories" id="stories-2" value="2" class="h-4 w-4" />
+              2 Stories
+            </label>
+          </div>
+        </fieldset>
+      </form>
+
+      <div class="rounded-lg bg-canvas-soft-2 p-6" aria-live="polite">
+        <p class="text-sm font-medium text-body">Estimated Cost</p>
+        <p id="result-error" class="mt-2 hidden text-sm text-error" role="alert"></p>
+        <div id="results-numbers">
+        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Low</p>
+            <p id="result-low" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.low)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Mid</p>
+            <p id="result-mid" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.mid)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">High</p>
+            <p id="result-high" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.high)}
+            </p>
+          </div>
+        </div>
+
+        <table class="mt-6 w-full text-sm">
+          <caption class="sr-only">Itemized cost breakdown</caption>
+          <thead>
+            <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+              <th scope="col" class="py-2 font-medium">Line Item</th>
+              <th scope="col" class="py-2 text-right font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Material &amp; Install (incl. downspouts)</td>
+              <td id="bd-material" class="tabular-nums py-2 text-right text-ink">
+                {usd(defaultResult.lineItems.materialCost)}
+              </td>
+            </tr>
+            <tr id="bd-story-row" class:list={["border-b border-hairline", { hidden: defaultResult.lineItems.storySurchargeCost <= 0 }]}>
+              <td class="py-2 text-body">2-story labor surcharge</td>
+              <td id="bd-story" class="tabular-nums py-2 text-right text-ink">
+                {usd(defaultResult.lineItems.storySurchargeCost)}
+              </td>
+            </tr>
+            <tr>
+              <td class="py-2 font-medium text-ink">Subtotal</td>
+              <td id="bd-subtotal" class="tabular-nums py-2 text-right font-medium text-ink">
+                {usd(defaultResult.subtotal)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="mt-4 text-xs text-mute">
+          Gutter length used: <span id="bd-lf" class="tabular-nums">{defaultResult.lf.toLocaleString('en-US')}</span> linear feet
+        </p>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            id="copy-result-button"
+            class="rounded-full bg-ink px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Copy Result
+          </button>
+          <button
+            type="button"
+            id="download-summary-button"
+            class="rounded-full border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Download Summary
+          </button>
+        </div>
+        <span id="result-action-status" class="mt-2 block text-sm text-success" aria-live="polite"></span>
+
+        <div class="mt-6 border-t border-hairline pt-6">
+          <ShareResult calculator="gutter" />
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-4 text-xs text-mute">
+      This is a directional planning estimate, not a site-specific quote. Roofline complexity,
+      corners, and local labor rates can move a contractor's actual bid.
+    </p>
+
+    <details class="group mt-6 rounded-lg border border-hairline p-4">
+      <summary class="cursor-pointer list-none text-sm font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+        How we calculate this
+      </summary>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-body">
+        <li>
+          Each material's per-linear-foot rate is a complete installed price: material, downspouts,
+          hardware, and labor. Nothing is added on top for downspouts, since that would double-count
+          a cost the rate already includes.
+        </li>
+        <li>
+          The 2-story surcharge is a flat $2 per linear foot, sourced from two independent estimates
+          of the $1&ndash;$3/LF premium contractors charge for second-story gutter work. See the
+          Methodology section below for both sources.
+        </li>
+        <li>
+          If you don&rsquo;t know your gutter run in linear feet, switch to &ldquo;Estimate from
+          roof/home area&rdquo; and enter your roof or home&rsquo;s square footage. We divide by
+          {SQFT_TO_LF_DIVISOR} to approximate linear feet, a rule both rate sources publish.
+        </li>
+        <li>
+          This is a planning estimate, not a quote. Get 2&ndash;3 bids from licensed local
+          contractors before budgeting against these numbers.
+        </li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6">
+    <CTASlot label="Get matched with a local gutter installer" />
+  </section>
+
+  <article class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <h2 class="text-2xl font-semibold tracking-tight text-ink">How This Calculator Works</h2>
+    <p class="mt-4 text-body">
+      This calculator prices gutter installation the way a contractor quotes it: a per-linear-foot
+      rate for your chosen material, multiplied by your gutter run, plus a flat surcharge if the
+      work is happening on a second story. Enter your gutter run directly if you know it from a
+      measurement or an old quote. If you don&rsquo;t, switch to &ldquo;Estimate from roof/home
+      area&rdquo; and enter your home&rsquo;s roof or footprint square footage instead; the
+      calculator divides that figure by {SQFT_TO_LF_DIVISOR} to approximate your linear footage,
+      a rule of thumb both of this page&rsquo;s rate sources publish independently. A 1,600 sq ft
+      home, for example, resolves to roughly 160 linear feet of gutter, which is why that scenario
+      is this calculator&rsquo;s default.
+    </p>
+    <p class="mt-4 text-body">
+      Material selection moves the price more than anything else: vinyl is cheapest, aluminum is
+      the most common middle-ground choice, steel costs more, and copper sits at the premium end.
+      Every material&rsquo;s per-linear-foot rate already bundles downspouts, end caps, hangers,
+      and installation labor into one number, so this calculator never adds a separate downspout
+      line item; doing so would double-count a cost the base rate already covers. A second story
+      adds its own flat per-linear-foot labor surcharge on top of the material cost, reflecting the
+      extra ladder work, staging, and time a crew needs working off the ground. That surcharge
+      never scales with your material choice: it&rsquo;s the same dollar amount whether you pick
+      vinyl or copper, because it prices the difficulty of the work, not the material running
+      through it.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Methodology</h2>
+    <p class="mt-4 text-body">
+      Every number on this page links to where it came from. Every material rate blends two
+      independent sources; the 2-story surcharge blends two more. Figures verified July 2026.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Material Installation Rates</h3>
+    <p class="mt-2 text-body">
+      Two sources, each publishing a price range or total for gutter installation by material:
+      <a href="https://homeguide.com/costs/gutter-installation-cost" class="text-link underline hover:text-link-deep">homeguide.com/costs/gutter-installation-cost</a>,
+      checked 2026-07-17, and
+      <a href="https://www.thisoldhouse.com/gutters/gutter-installation-cost" class="text-link underline hover:text-link-deep">thisoldhouse.com/gutters/gutter-installation-cost</a>
+      (sourcing Homewyse data), checked 2026-07-17, which publishes 200-linear-foot installed
+      totals that we divide by 200 to get a comparable per-linear-foot figure. Each material&rsquo;s
+      rate below is the average of the two sources&rsquo; own midpoints:
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">Material</th>
+            <th scope="col" class="py-2 text-right font-medium">HomeGuide Mid</th>
+            <th scope="col" class="py-2 text-right font-medium">This Old House</th>
+            <th scope="col" class="py-2 text-right font-medium">Blended Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Vinyl</td>
+            <td class="tabular-nums py-2 text-right text-ink">$10.00/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$11.94/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$11/LF</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Aluminum</td>
+            <td class="tabular-nums py-2 text-right text-ink">$15.00/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$16.76/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$16/LF</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Steel</td>
+            <td class="tabular-nums py-2 text-right text-ink">$22.50/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$17.67/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$20/LF</td>
+          </tr>
+          <tr>
+            <td class="py-2 text-body">Copper</td>
+            <td class="tabular-nums py-2 text-right text-ink">$32.50/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$37.83/LF</td>
+            <td class="tabular-nums py-2 text-right text-ink">$35/LF</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">2-Story Labor Surcharge</h3>
+    <p class="mt-2 text-body">
+      Two sources independently state the same range for second-story gutter work:
+      <a href="https://homeguide.com/costs/gutter-installation-cost" class="text-link underline hover:text-link-deep">homeguide.com</a> states
+      &ldquo;+$1 to $3+/LF,&rdquo; and
+      <a href="https://www.bigriverroofs.com/why-seamless-gutters-are-worth-every-penny/" class="text-link underline hover:text-link-deep">bigriverroofs.com</a> states
+      it &ldquo;adds $1 to $3 per linear foot.&rdquo; This calculator uses the midpoint of that
+      shared range, ${STORY_SURCHARGE_PER_LF}/LF, applied only to material cost, not stacked with
+      any other multiplier. Both sources checked 2026-07-17.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Square Footage to Linear Feet</h3>
+    <p class="mt-2 text-body">
+      Both rate sources above independently state the same rule of thumb for estimating gutter
+      footage from a home&rsquo;s roof or footprint square footage: divide by {SQFT_TO_LF_DIVISOR}.
+      This calculator uses that conversion whenever you estimate from area instead of entering a
+      measured linear-foot figure directly.
+    </p>
+
+    <p class="mt-6 text-sm text-mute">
+      Methodology last updated {DATE_PUBLISHED}. Every rate and blend above lives as a
+      <code class="font-mono-caption text-xs">sourceNote</code> next to its value in this
+      site&rsquo;s underlying rate data. Found a source that&rsquo;s gone stale or a blend you think
+      is wrong? <a href="/contact/" class="text-link underline hover:text-link-deep">Contact us</a>
+      with the page and the number.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">What Drives Gutter Installation Cost</h2>
+    <p class="mt-4 text-body">
+      <strong>Material</strong> is the single biggest lever. Vinyl stays the cheapest option per
+      linear foot, aluminum is the default choice for most homes on cost and durability, steel
+      costs noticeably more, and copper, prized for its look and lifespan, runs roughly three times
+      aluminum&rsquo;s installed price on an identical run.
+    </p>
+    <p class="mt-4 text-body">
+      <strong>Home height</strong> matters because second-story work is slower and requires more
+      safety setup: taller ladders, more careful staging, and more time per linear foot than
+      ground-level, single-story runs. <strong>Gutter length</strong> scales the whole bill
+      linearly, which is why an accurate linear-foot count, or a reasonable roof-area estimate,
+      matters more for gutters than for almost any other exterior project: there&rsquo;s no
+      material-quantity math to correct for beyond the length itself.
+    </p>
+    <p class="mt-4 text-body">
+      Rooflines with more corners, valleys, or dormers need more linear feet of gutter than a
+      simple rectangular footprint of the same square footage, since each inside or outside corner
+      adds length the sqft&divide;{SQFT_TO_LF_DIVISOR} rule of thumb doesn&rsquo;t fully capture.
+      If your home has an unusually complex roofline, measure your actual gutter run directly
+      rather than relying on the area-based estimate.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Worked Example</h2>
+    <p class="mt-4 text-body">
+      Take this calculator&rsquo;s own default scenario: a 160-linear-foot gutter run on a
+      single-story home, aluminum, entered directly. That&rsquo;s 160 LF at $16 per linear foot,
+      or {usd(defaultResult.lineItems.materialCost)}, with no 2-story surcharge since the home is a
+      single story. Apply the Low/High spread (0.85x to 1.15x, the same symmetric band used across
+      this site&rsquo;s calculators) and you get a Low estimate of {usd(defaultResult.low)}, a High
+      estimate of {usd(defaultResult.high)}, and a {usd(defaultResult.mid)} midpoint to budget
+      around. Switch that same home to steel and the subtotal jumps to $3,200. Move it to a
+      two-story home and aluminum&rsquo;s subtotal rises by $320, the same 160 LF multiplied by the
+      $2/LF surcharge, regardless of material. Try it above with your own gutter length.
+    </p>
+  </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={DATE_PUBLISHED}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6" aria-labelledby="faq-heading">
+    <h2 id="faq-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Frequently Asked Questions
+    </h2>
+    <div class="mt-4 divide-y divide-hairline">
+      {FAQS.map((faq) => (
+        <details class="group py-4">
+          <summary class="cursor-pointer list-none text-base font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+            {faq.question}
+          </summary>
+          <p class="mt-2 text-sm text-body" set:html={faq.answerHtml ?? faq.answer} />
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-20 sm:px-6" aria-labelledby="related-heading">
+    <h2 id="related-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Related Calculators &amp; Guides
+    </h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <a
+        href="/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Roof Replacement Cost Calculator
+      </a>
+      <a
+        href="/blog/signs-you-need-roof-replacement/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        9 Signs You Need a Roof Replacement, Not a Repair
+      </a>
+      <a
+        href="/blog/roof-repair-vs-replacement/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Roof Repair vs. Replacement: How to Decide
+      </a>
+      <a
+        href="/blog/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        All Blog Guides
+      </a>
+    </div>
+  </section>
+</BaseLayout>

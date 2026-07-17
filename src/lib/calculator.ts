@@ -84,22 +84,39 @@ export interface CalculatorResult {
   error?: string;
 }
 
-const MIN_ROOF_AREA_SQFT = 1;
-const MAX_ROOF_AREA_SQFT = 20000;
+export const MIN_ROOF_AREA_SQFT = 1;
+export const MAX_ROOF_AREA_SQFT = 20000;
+
+// Shared by any calculator that offers "direct sqft vs. home footprint" area
+// entry (e.g. the metal roof spoke), so the footprint->sloped-area geometry
+// isn't reimplemented per calculator.
+export function resolveRoofAreaSqft(
+  areaMode: AreaMode,
+  directSqft: number,
+  homeSqft: number,
+  stories: number,
+  pitch: PitchKey,
+): number {
+  if (areaMode === 'direct') {
+    return directSqft;
+  }
+  const clampedStories = Math.max(1, stories);
+  const footprintSqft = homeSqft / clampedStories;
+  return footprintSqft * pitchAreaFactor(pitch);
+}
 
 export function calculate(inputs: CalculatorInputs): CalculatorResult {
   const material = getMaterial(inputs.material);
   const pitch = getPitchAdder(inputs.pitch);
   const region = getRegion(inputs.region);
 
-  let roofAreaSqft: number;
-  if (inputs.areaMode === 'direct') {
-    roofAreaSqft = inputs.directSqft;
-  } else {
-    const stories = Math.max(1, inputs.stories);
-    const footprintSqft = inputs.homeSqft / stories;
-    roofAreaSqft = footprintSqft * pitchAreaFactor(inputs.pitch);
-  }
+  const roofAreaSqft = resolveRoofAreaSqft(
+    inputs.areaMode,
+    inputs.directSqft,
+    inputs.homeSqft,
+    inputs.stories,
+    inputs.pitch,
+  );
 
   if (roofAreaSqft < MIN_ROOF_AREA_SQFT || roofAreaSqft > MAX_ROOF_AREA_SQFT) {
     return {

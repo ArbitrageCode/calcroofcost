@@ -1,22 +1,28 @@
 ---
 // Keeps the current calculator inputs mirrored into the URL query string and
-// offers a "copy link" button. Decoupled from calculator.ts's types via
-// CustomEvents so this component has no page-specific knowledge:
+// offers a "copy link" button. Decoupled from any single calculator's types
+// via CustomEvents, namespaced per calculator via the `calculator` prop so
+// multiple calculator pages can each use this component without cross-talk:
 //
-//   window.dispatchEvent(new CustomEvent('roofcalc:inputs-changed', { detail: inputs }))
+//   window.dispatchEvent(new CustomEvent(`${namespace}:inputs-changed`, { detail: inputs }))
 //     -> this component re-encodes `inputs` into the URL (history.replaceState)
 //
 //   on load, this component reads the URL and dispatches:
-//     new CustomEvent('roofcalc:restore-inputs', { detail: decodedInputs })
+//     new CustomEvent(`${namespace}:restore-inputs`, { detail: decodedInputs })
 //     -> the calculator page listens for this to pre-fill its form
 //
-//   The restore value is also retained on window.__roofcalcPendingRestore so
+//   The restore value is also retained on window.__pendingRestore[namespace] so
 //   the calculator page can pick it up even if its listener registers after
 //   this dispatch fires (module script order isn't guaranteed to survive a
 //   future DOM reorder).
+export interface Props {
+  calculator?: 'roof' | 'gutter' | 'metalroof' | 'siding' | 'window';
+}
+
+const { calculator = 'roof' } = Astro.props;
 ---
 
-<div class="flex flex-wrap items-center gap-3">
+<div class="flex flex-wrap items-center gap-3" data-share-result data-calculator={calculator}>
   <button
     type="button"
     id="share-result-button"
@@ -28,14 +34,55 @@
 </div>
 
 <script>
-  import { encodeInputs, decodeInputs } from '../lib/calculator';
+  import { encodeInputs as encodeRoofInputs, decodeInputs as decodeRoofInputs } from '../lib/calculator';
+  import { encodeGutterInputs, decodeGutterInputs } from '../lib/gutterCalculator';
+  import { encodeMetalRoofInputs, decodeMetalRoofInputs } from '../lib/metalRoofCalculator';
+  import { encodeSidingInputs, decodeSidingInputs } from '../lib/sidingCalculator';
+  import { encodeWindowInputs, decodeWindowInputs } from '../lib/windowCalculator';
+
+  const CALCULATORS = {
+    roof: {
+      namespace: 'roofcalc',
+      encode: encodeRoofInputs,
+      decode: decodeRoofInputs,
+      restoreKeys: ['material', 'sqft', 'mode'],
+    },
+    gutter: {
+      namespace: 'guttercalc',
+      encode: encodeGutterInputs,
+      decode: decodeGutterInputs,
+      restoreKeys: ['material', 'lf', 'mode'],
+    },
+    metalroof: {
+      namespace: 'metalroofcalc',
+      encode: encodeMetalRoofInputs,
+      decode: decodeMetalRoofInputs,
+      restoreKeys: ['system', 'sqft', 'mode'],
+    },
+    siding: {
+      namespace: 'sidingcalc',
+      encode: encodeSidingInputs,
+      decode: decodeSidingInputs,
+      restoreKeys: ['material', 'wall', 'mode'],
+    },
+    window: {
+      namespace: 'windowcalc',
+      encode: encodeWindowInputs,
+      decode: decodeWindowInputs,
+      restoreKeys: ['type', 'frame', 'n'],
+    },
+  } as const;
+
+  const container = document.querySelector<HTMLElement>('[data-share-result]');
+  const calculatorKey = (container?.dataset.calculator as keyof typeof CALCULATORS) ?? 'roof';
+  const { namespace, encode, decode, restoreKeys } = CALCULATORS[calculatorKey];
 
   const button = document.getElementById('share-result-button');
   const status = document.getElementById('share-result-status');
 
-  window.addEventListener('roofcalc:inputs-changed', (event) => {
+  window.addEventListener(`${namespace}:inputs-changed`, (event) => {
     const inputs = (event as CustomEvent).detail;
-    const params = encodeInputs(inputs);
+    const params = encode(inputs as never);
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, '', newUrl);
   });
@@ -49,9 +96,10 @@
   });
 
   const sp = new URLSearchParams(window.location.search);
-  if (sp.has('material') || sp.has('sqft') || sp.has('mode')) {
-    const restoredInputs = decodeInputs(sp);
-    (window as unknown as { __roofcalcPendingRestore?: unknown }).__roofcalcPendingRestore = restoredInputs;
-    window.dispatchEvent(new CustomEvent('roofcalc:restore-inputs', { detail: restoredInputs }));
+  if (restoreKeys.some((key) => sp.has(key))) {
+    const restoredInputs = decode(sp as never);
+    (window as unknown as { __pendingRestore?: Record<string, unknown> }).__pendingRestore ??= {};
+    (window as unknown as { __pendingRestore: Record<string, unknown> }).__pendingRestore[namespace] = restoredInputs;
+    window.dispatchEvent(new CustomEvent(`${namespace}:restore-inputs`, { detail: restoredInputs }));
   }
 </script>

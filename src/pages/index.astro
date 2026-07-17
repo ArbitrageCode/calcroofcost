@@ -65,10 +65,10 @@ const jsonLd = buildGraph([
 ]);
 
 const HUB_LINKS = [
-  { label: 'Gutter Replacement Cost Calculator' },
-  { label: 'Window Replacement Cost Calculator' },
-  { label: 'Metal Roof Cost Calculator' },
-  { label: 'Siding Cost Calculator' },
+  { label: 'Gutter Installation Cost Calculator', href: '/gutter-installation-cost-calculator/' },
+  { label: 'Metal Roof Cost Calculator', href: '/metal-roof-cost-calculator/' },
+  { label: 'Siding Cost Calculator', href: '/siding-cost-calculator/' },
+  { label: 'Window Replacement Cost Calculator', href: '/window-replacement-cost-calculator/' },
 ];
 ---
 
@@ -179,7 +179,7 @@ const HUB_LINKS = [
     // Guard against DOM/script-order drift: if ShareResult's restore-inputs
     // event already fired before the listener above was registered, pick up
     // the retained value directly instead of silently losing the pre-fill.
-    const pendingRestore = (window as unknown as { __roofcalcPendingRestore?: CalculatorInputs }).__roofcalcPendingRestore;
+    const pendingRestore = (window as unknown as { __pendingRestore?: Record<string, CalculatorInputs> }).__pendingRestore?.roofcalc;
     if (pendingRestore) {
       applyInputs(pendingRestore);
     }
@@ -751,12 +751,21 @@ const HUB_LINKS = [
     </h2>
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
       {HUB_LINKS.map((link) => (
-        <div
-          class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink"
-        >
-          {link.label}
-          <span class="rounded-full bg-canvas-soft-2 px-2 py-0.5 text-xs font-normal text-mute">Coming soon</span>
-        </div>
+        link.href ? (
+          <a
+            href={link.href}
+            class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+          >
+            {link.label}
+          </a>
+        ) : (
+          <div
+            class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink"
+          >
+            {link.label}
+            <span class="rounded-full bg-canvas-soft-2 px-2 py-0.5 text-xs font-normal text-mute">Coming soon</span>
+          </div>
+        )
       ))}
     </div>
   </section>

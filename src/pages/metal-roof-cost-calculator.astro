@@ -1,0 +1,661 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTASlot from '../components/CTASlot.astro';
+import CitePage from '../components/CitePage.astro';
+import ShareResult from '../components/ShareResult.astro';
+import { METAL_SYSTEMS } from '../data/metalRoofRates';
+import { PITCH_ADDERS } from '../data/rates';
+import { ORGANIZATION } from '../data/author';
+import { calculateMetalRoof, METAL_ROOF_DEFAULT_INPUTS } from '../lib/metalRoofCalculator';
+import { buildGraph, organizationNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
+
+const PAGE_PATH = '/metal-roof-cost-calculator/';
+const DATE_PUBLISHED = '2026-07-17';
+
+const title = 'Metal Roof Cost Calculator (2026) | CalcRoofCost.com';
+const description =
+  'Estimate your metal roof cost in seconds. Enter your roof size (or home footprint), pick a roofing system from corrugated steel to copper, and get an instant Low/Mid/High price breakdown.';
+
+const defaultResult = calculateMetalRoof(METAL_ROOF_DEFAULT_INPUTS);
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+const corrugatedRate = METAL_SYSTEMS.find((s) => s.key === 'corrugated')!;
+const copperRate = METAL_SYSTEMS.find((s) => s.key === 'copper')!;
+
+const FAQS = [
+  {
+    question: 'How much does a metal roof cost on average?',
+    answer:
+      "A 2,000 sq ft standing seam metal roof runs $21,675 to $29,325 at this calculator's blended national rate, with a $25,500 midpoint. Corrugated steel comes in well below that, and zinc or copper run well above it.",
+  },
+  {
+    question: 'What is the cheapest type of metal roofing?',
+    answer:
+      'Corrugated steel with exposed fasteners is the least expensive metal roofing system per square foot, followed by metal shingles, then standing seam. Zinc and copper sit well above all three as premium, long-life options.',
+  },
+  {
+    question: 'Why does copper cost so much more than steel roofing?',
+    answer:
+      "Copper's blended installed rate runs roughly 2.5 times standing seam steel's, and nearly 4 times corrugated steel's. Copper is priced as a premium architectural material: the raw metal costs more, it's typically hand-formed or specialty-fabricated rather than machine-rolled, and it's chosen for appearance and longevity rather than lowest cost per square foot.",
+  },
+  {
+    question: 'Does this calculator include tear-off of my old roof?',
+    answer:
+      "No. These rates are installed material and labor for the new metal roof system only. If you're replacing an existing roof and need tear-off pricing, use our Roof Replacement Cost Calculator, which sources tear-off cost separately by layer count.",
+    answerHtml:
+      "No. These rates are installed material and labor for the new metal roof system only. If you're replacing an existing roof and need tear-off pricing, use our <a href=\"/\" class=\"text-link underline hover:text-link-deep\">Roof Replacement Cost Calculator</a>, which sources tear-off cost separately by layer count.",
+  },
+  {
+    question: "Why isn't stone-coated steel included as an option?",
+    answer:
+      "Stone-coated steel is left out because only one of this page's two rate sources publishes a figure for it. Every other system here is blended from two independent sources; adding a single-sourced figure would break that standard, so it's omitted rather than estimated.",
+  },
+  {
+    question: 'Does roof pitch affect the price shown here?',
+    answer:
+      "Pitch affects the roof area calculation when you estimate from your home's footprint, since a steeper roof covers more actual surface than the same footprint on a low-slope roof. It does not add a separate labor surcharge on this page: these installed $/sq ft rates come from sources that don't break out labor by pitch, and this calculator's own roof replacement tool already prices a steep-pitch labor surcharge separately, so adding a second one here would double-count it.",
+  },
+];
+
+const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: title,
+    description,
+    datePublished: DATE_PUBLISHED,
+  }),
+  faqNode(FAQS),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Metal Roof Cost Calculator', path: PAGE_PATH },
+  ]),
+]);
+---
+
+<BaseLayout title={title} description={description}>
+  <script>
+    import { calculateMetalRoof, decodeMetalRoofInputs, type MetalRoofCalculatorInputs } from '../lib/metalRoofCalculator';
+    import type { MetalSystemKey } from '../data/metalRoofRates';
+    import type { AreaMode, PitchKey } from '../lib/calculator';
+
+    const currency = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    });
+
+    const form = document.getElementById('metalroof-calculator-form') as HTMLFormElement;
+    const directFields = document.getElementById('area-mode-direct-fields')!;
+    const footprintFields = document.getElementById('area-mode-footprint-fields')!;
+
+    function readInputs(): MetalRoofCalculatorInputs {
+      const areaMode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value as AreaMode;
+      return {
+        areaMode,
+        directSqft: Number((document.getElementById('direct-sqft') as HTMLInputElement).value) || 0,
+        homeSqft: Number((document.getElementById('home-sqft') as HTMLInputElement).value) || 0,
+        stories: Number((document.getElementById('stories') as HTMLSelectElement).value) || 1,
+        pitch: (document.getElementById('pitch') as HTMLSelectElement).value as PitchKey,
+        system: (document.getElementById('system') as HTMLSelectElement).value as MetalSystemKey,
+      };
+    }
+
+    function applyInputs(inputs: MetalRoofCalculatorInputs) {
+      (document.getElementById(inputs.areaMode === 'direct' ? 'area-mode-direct' : 'area-mode-footprint') as HTMLInputElement).checked = true;
+      (document.getElementById('direct-sqft') as HTMLInputElement).value = String(inputs.directSqft);
+      (document.getElementById('home-sqft') as HTMLInputElement).value = String(inputs.homeSqft);
+      (document.getElementById('stories') as HTMLSelectElement).value = String(inputs.stories);
+      (document.getElementById('pitch') as HTMLSelectElement).value = inputs.pitch;
+      (document.getElementById('system') as HTMLSelectElement).value = inputs.system;
+      updateAreaModeVisibility();
+    }
+
+    function updateAreaModeVisibility() {
+      const mode = (form.querySelector('input[name="areaMode"]:checked') as HTMLInputElement).value;
+      directFields.classList.toggle('hidden', mode !== 'direct');
+      footprintFields.classList.toggle('hidden', mode !== 'footprint');
+      // Pitch stays visible in both modes: it drives the footprint->sloped-area
+      // geometry conversion in footprint mode. In direct mode it has no effect
+      // at all (no pitch labor surcharge exists on this page to apply), which
+      // the methodology panel below discloses.
+    }
+
+    function render() {
+      const inputs = readInputs();
+      const result = calculateMetalRoof(inputs);
+      const errorEl = document.getElementById('result-error')!;
+      const numbersEl = document.getElementById('results-numbers')!;
+
+      if (result.error) {
+        errorEl.textContent = result.error;
+        errorEl.classList.remove('hidden');
+        numbersEl.classList.add('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+        numbersEl.classList.remove('hidden');
+        document.getElementById('result-low')!.textContent = currency.format(result.low);
+        document.getElementById('result-mid')!.textContent = currency.format(result.mid);
+        document.getElementById('result-high')!.textContent = currency.format(result.high);
+        document.getElementById('bd-material')!.textContent = currency.format(result.lineItems.materialCost);
+        document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
+        document.getElementById('bd-area')!.textContent = result.roofAreaSqft.toLocaleString('en-US');
+      }
+
+      window.dispatchEvent(new CustomEvent('metalroofcalc:inputs-changed', { detail: inputs }));
+      return { inputs, result };
+    }
+
+    form.addEventListener('input', () => {
+      updateAreaModeVisibility();
+      render();
+    });
+
+    window.addEventListener('metalroofcalc:restore-inputs', (event) => {
+      applyInputs((event as CustomEvent<MetalRoofCalculatorInputs>).detail);
+      render();
+    });
+
+    const pendingRestore = (window as unknown as { __pendingRestore?: Record<string, MetalRoofCalculatorInputs> }).__pendingRestore?.metalroofcalc;
+    if (pendingRestore) {
+      applyInputs(pendingRestore);
+    }
+
+    const statusEl = document.getElementById('result-action-status')!;
+
+    document.getElementById('copy-result-button')?.addEventListener('click', async () => {
+      const { result } = render();
+      const systemLabel = (document.getElementById('system') as HTMLSelectElement).selectedOptions[0].textContent;
+      const summary = [
+        'Metal Roof Cost Estimate',
+        'CalcRoofCost.com',
+        `System: ${systemLabel}`,
+        `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft`,
+        `Low: ${currency.format(result.low)}`,
+        `Mid: ${currency.format(result.mid)}`,
+        `High: ${currency.format(result.high)}`,
+      ].join('\n');
+      await navigator.clipboard.writeText(summary);
+      statusEl.textContent = 'Result copied to clipboard!';
+      window.setTimeout(() => (statusEl.textContent = ''), 2500);
+    });
+
+    document.getElementById('download-summary-button')?.addEventListener('click', () => {
+      const { result } = render();
+      const systemLabel = (document.getElementById('system') as HTMLSelectElement).selectedOptions[0].textContent;
+      const lines = [
+        'Metal Roof Cost Estimate',
+        'CalcRoofCost.com',
+        '',
+        `System: ${systemLabel}`,
+        `Roof area: ${result.roofAreaSqft.toLocaleString('en-US')} sq ft`,
+        '',
+        `Material & Install: ${currency.format(result.lineItems.materialCost)}`,
+        `Subtotal: ${currency.format(result.subtotal)}`,
+        '',
+        `Low estimate: ${currency.format(result.low)}`,
+        `Mid estimate: ${currency.format(result.mid)}`,
+        `High estimate: ${currency.format(result.high)}`,
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'metal-roof-cost-estimate.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    updateAreaModeVisibility();
+    render();
+  </script>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <section class="mx-auto max-w-4xl px-4 pt-12 pb-8 sm:px-6 sm:pt-16">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+      Metal Roof Cost Calculator
+    </h1>
+    <p class="mt-4 max-w-2xl text-lg text-body">
+      Get an instant Low / Mid / High estimate for a metal roof. Enter your roof size (or your
+      home&rsquo;s footprint), pick a roofing system from corrugated steel to copper, and see how
+      the price changes.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6" aria-labelledby="calculator-heading">
+    <h2 id="calculator-heading" class="sr-only">Calculator</h2>
+    <div class="grid gap-6 rounded-xl border border-hairline bg-canvas p-6 shadow-sm sm:p-8 lg:grid-cols-2">
+      <form id="metalroof-calculator-form" class="space-y-6">
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">How do you want to enter roof size?</legend>
+          <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-direct" value="direct" checked class="h-4 w-4" />
+              Enter roof area directly
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="areaMode" id="area-mode-footprint" value="footprint" class="h-4 w-4" />
+              Estimate from home size
+            </label>
+          </div>
+        </fieldset>
+
+        <div id="area-mode-direct-fields">
+          <label for="direct-sqft" class="block text-sm font-medium text-ink">Roof Area (sq ft)</label>
+          <input
+            type="number"
+            id="direct-sqft"
+            name="direct-sqft"
+            min="0"
+            step="50"
+            inputmode="numeric"
+            autocomplete="off"
+            value={METAL_ROOF_DEFAULT_INPUTS.directSqft}
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          />
+        </div>
+
+        <div id="area-mode-footprint-fields" class="hidden space-y-4">
+          <div>
+            <label for="home-sqft" class="block text-sm font-medium text-ink">Home Square Footage</label>
+            <input
+              type="number"
+              id="home-sqft"
+              name="home-sqft"
+              min="0"
+              step="50"
+              inputmode="numeric"
+              autocomplete="off"
+              value={METAL_ROOF_DEFAULT_INPUTS.homeSqft}
+              class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+            />
+          </div>
+          <div>
+            <label for="stories" class="block text-sm font-medium text-ink">Stories</label>
+            <select
+              id="stories"
+              name="stories"
+              class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+            >
+              <option value="1">1 Story</option>
+              <option value="2">2 Stories</option>
+              <option value="3">3+ Stories</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="pitch" class="block text-sm font-medium text-ink">Roof Pitch</label>
+          <select
+            id="pitch"
+            name="pitch"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {PITCH_ADDERS.map((p) => (
+              <option value={p.key} selected={p.key === METAL_ROOF_DEFAULT_INPUTS.pitch}>
+                {p.label} ({p.pitchRange})
+              </option>
+            ))}
+          </select>
+          <p class="mt-1 text-xs text-mute">Used only to convert home footprint into sloped roof area; no separate pitch labor surcharge is added on this page.</p>
+        </div>
+
+        <div>
+          <label for="system" class="block text-sm font-medium text-ink">Roofing System</label>
+          <select
+            id="system"
+            name="system"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {METAL_SYSTEMS.map((s) => (
+              <option value={s.key} selected={s.key === METAL_ROOF_DEFAULT_INPUTS.system}>
+                {s.label} (${s.costPerSqft}/sq ft installed)
+              </option>
+            ))}
+          </select>
+        </div>
+      </form>
+
+      <div class="rounded-lg bg-canvas-soft-2 p-6" aria-live="polite">
+        <p class="text-sm font-medium text-body">Estimated Cost</p>
+        <p id="result-error" class="mt-2 hidden text-sm text-error" role="alert"></p>
+        <div id="results-numbers">
+        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Low</p>
+            <p id="result-low" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.low)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Mid</p>
+            <p id="result-mid" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.mid)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">High</p>
+            <p id="result-high" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.high)}
+            </p>
+          </div>
+        </div>
+
+        <table class="mt-6 w-full text-sm">
+          <caption class="sr-only">Itemized cost breakdown</caption>
+          <thead>
+            <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+              <th scope="col" class="py-2 font-medium">Line Item</th>
+              <th scope="col" class="py-2 text-right font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Material &amp; Install</td>
+              <td id="bd-material" class="tabular-nums py-2 text-right text-ink">
+                {usd(defaultResult.lineItems.materialCost)}
+              </td>
+            </tr>
+            <tr>
+              <td class="py-2 font-medium text-ink">Subtotal</td>
+              <td id="bd-subtotal" class="tabular-nums py-2 text-right font-medium text-ink">
+                {usd(defaultResult.subtotal)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="mt-4 text-xs text-mute">
+          Roof area used: <span id="bd-area" class="tabular-nums">{defaultResult.roofAreaSqft.toLocaleString('en-US')}</span> sq ft
+        </p>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            id="copy-result-button"
+            class="rounded-full bg-ink px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Copy Result
+          </button>
+          <button
+            type="button"
+            id="download-summary-button"
+            class="rounded-full border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Download Summary
+          </button>
+        </div>
+        <span id="result-action-status" class="mt-2 block text-sm text-success" aria-live="polite"></span>
+
+        <div class="mt-6 border-t border-hairline pt-6">
+          <ShareResult calculator="metalroof" />
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-4 text-xs text-mute">
+      This is a directional planning estimate, not a site-specific quote. Roofline complexity,
+      tear-off needs, and local labor rates can move a contractor&rsquo;s actual bid.
+    </p>
+
+    <details class="group mt-6 rounded-lg border border-hairline p-4">
+      <summary class="cursor-pointer list-none text-sm font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+        How we calculate this
+      </summary>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-body">
+        <li>
+          Each roofing system&rsquo;s per-square-foot rate is a complete installed price: material
+          and labor blended from two independent sources&rsquo; own midpoints.
+        </li>
+        <li>
+          Pitch converts a flat footprint into sloped roof area using the same geometry factor as
+          this site&rsquo;s roof replacement calculator, but only in &ldquo;Estimate from home
+          size&rdquo; mode. This page does not add a separate steep-pitch labor surcharge: the
+          rates above aren&rsquo;t sourced with a pitch-specific labor breakdown, and this
+          site&rsquo;s roof replacement calculator already prices that surcharge separately, so
+          adding it here would double-count labor.
+        </li>
+        <li>
+          Stone-coated steel is intentionally left off the system list: only one of the two rate
+          sources covers it, and every other system here is blended from two sources. See the
+          Methodology section below.
+        </li>
+        <li>
+          This is a planning estimate, not a quote. Get 2&ndash;3 bids from licensed local
+          contractors before budgeting against these numbers.
+        </li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6">
+    <CTASlot label="Get matched with a local metal roofing contractor" />
+  </section>
+
+  <article class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <h2 class="text-2xl font-semibold tracking-tight text-ink">How This Calculator Works</h2>
+    <p class="mt-4 text-body">
+      This calculator prices a metal roof by multiplying your roof area by a per-square-foot
+      installed rate for the system you pick. Enter your roof&rsquo;s measured area directly if
+      you know it, or switch to &ldquo;Estimate from home size&rdquo; and enter your home&rsquo;s
+      total square footage, number of stories, and roof pitch instead. In footprint mode, the
+      calculator divides by stories to approximate your footprint, then applies the same
+      pitch-based geometry factor used across this site to convert that flat footprint into actual
+      sloped roof surface area: a steeper roof always covers more surface than the same footprint
+      on a shallow roof. Pitch has no other effect on the price shown here. Unlike this
+      site&rsquo;s roof replacement calculator, this page doesn&rsquo;t add a separate steep-pitch
+      labor surcharge on top of area, because the metal-roofing rate sources behind this page
+      don&rsquo;t publish a pitch-specific labor breakdown to source that surcharge from.
+    </p>
+    <p class="mt-4 text-body">
+      System choice is the biggest lever on price. Corrugated steel with exposed fasteners is the
+      most affordable option, metal shingles sit in the next tier, and standing seam, the most
+      commonly quoted &ldquo;metal roof&rdquo; system, costs more still. Zinc and copper are
+      premium options priced well above any steel system, chosen for appearance and longevity
+      rather than lowest cost per square foot.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Methodology</h2>
+    <p class="mt-4 text-body">
+      Every number on this page links to where it came from. Every system rate blends two
+      independent sources&rsquo; own midpoints. Figures verified July 2026.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Corrugated, Shingles &amp; Standing Seam</h3>
+    <p class="mt-2 text-body">
+      Two sources, each publishing a price-per-square-foot range for these three profiles:
+      <a href="https://modernize.com/roof/metal/cost" class="text-link underline hover:text-link-deep">modernize.com/roof/metal/cost</a>,
+      checked 2026-07-17 (updated 2026-03-16), and
+      <a href="https://cobexcg.com/metal-roof-cost/" class="text-link underline hover:text-link-deep">cobexcg.com/metal-roof-cost/</a>,
+      checked 2026-07-17 (updated 2026-03-20). Each system&rsquo;s rate below is the average of the
+      two sources&rsquo; own midpoints:
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">System</th>
+            <th scope="col" class="py-2 text-right font-medium">Modernize</th>
+            <th scope="col" class="py-2 text-right font-medium">cobexcg.com</th>
+            <th scope="col" class="py-2 text-right font-medium">Blended Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Corrugated Steel</td>
+            <td class="tabular-nums py-2 text-right text-ink">$4&ndash;14/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$5&ndash;12/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$8.75/sq ft</td>
+          </tr>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Metal Shingles</td>
+            <td class="tabular-nums py-2 text-right text-ink">$6&ndash;21/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$6&ndash;14/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$11.75/sq ft</td>
+          </tr>
+          <tr>
+            <td class="py-2 text-body">Standing Seam</td>
+            <td class="tabular-nums py-2 text-right text-ink">$10&ndash;16/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$9&ndash;16/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$12.75/sq ft</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Zinc &amp; Copper</h3>
+    <p class="mt-2 text-body">
+      These two premium systems are blended from a different second source, since cobexcg.com
+      doesn&rsquo;t cover them: <a href="https://modernize.com/roof/metal/cost" class="text-link underline hover:text-link-deep">modernize.com/roof/metal/cost</a> again,
+      paired with <a href="https://www.thisoldhouse.com/roofing/metal-roofing-cost" class="text-link underline hover:text-link-deep">thisoldhouse.com/roofing/metal-roofing-cost</a> (Homewyse
+      data), checked 2026-07-17 (updated 2026-04-03).
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">System</th>
+            <th scope="col" class="py-2 text-right font-medium">Modernize</th>
+            <th scope="col" class="py-2 text-right font-medium">This Old House</th>
+            <th scope="col" class="py-2 text-right font-medium">Blended Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-hairline">
+            <td class="py-2 text-body">Zinc Standing Seam</td>
+            <td class="tabular-nums py-2 text-right text-ink">$10&ndash;20/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$14&ndash;20/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$16.00/sq ft</td>
+          </tr>
+          <tr>
+            <td class="py-2 text-body">Copper</td>
+            <td class="tabular-nums py-2 text-right text-ink">$20&ndash;40/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$29&ndash;41/sq ft</td>
+            <td class="tabular-nums py-2 text-right text-ink">$32.50/sq ft</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Why Stone-Coated Steel Is Omitted</h3>
+    <p class="mt-2 text-body">
+      Stone-coated steel is a real, commonly quoted metal roofing profile, but it doesn&rsquo;t
+      appear as an option on this page. cobexcg.com, one of the two sources behind the corrugated,
+      shingle, and standing-seam rates above, does not publish a stone-coated steel figure at all.
+      That leaves only a single source for it, and every other system on this page clears a
+      2-source blend bar. Rather than estimate a blended rate from one source, or borrow a
+      standing-seam figure as a stand-in, this calculator leaves stone-coated steel out until a
+      second corroborating source is found.
+    </p>
+
+    <p class="mt-6 text-sm text-mute">
+      Methodology last updated {DATE_PUBLISHED}. Every rate and blend above lives as a
+      <code class="font-mono-caption text-xs">sourceNote</code> next to its value in this
+      site&rsquo;s underlying rate data. Found a source that&rsquo;s gone stale or a blend you
+      think is wrong? <a href="/contact/" class="text-link underline hover:text-link-deep">Contact us</a>
+      with the page and the number.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">What Drives Metal Roof Cost</h2>
+    <p class="mt-4 text-body">
+      <strong>System</strong> is the dominant factor. Corrugated steel with exposed fasteners
+      stays the cheapest way onto a metal roof, but it shows visible fastener heads and needs
+      periodic fastener maintenance. Standing seam hides its fasteners under a raised seam and is
+      the system most homeowners mean when they say &ldquo;metal roof,&rdquo; at a real premium
+      over corrugated. Zinc and copper cost multiples of steel because the raw material itself
+      costs more and both are chosen for a distinctive, weathering appearance as much as for
+      performance.
+    </p>
+    <p class="mt-4 text-body">
+      <strong>Roof area</strong> scales the bill directly, and pitch feeds into that area
+      whenever you estimate from your home&rsquo;s footprint rather than a measured roof area,
+      since steeper roofs cover more actual surface over the same footprint. See
+      <a href="/blog/roof-pitch-cost-impact/" class="text-link underline hover:text-link-deep">how roof pitch affects replacement cost</a>
+      for the geometry behind that. <strong>Tear-off</strong> of an existing roof isn&rsquo;t
+      priced on this page at all; combine this calculator&rsquo;s material-and-install number with
+      the <a href="/" class="text-link underline hover:text-link-deep">roof replacement calculator&rsquo;s</a> sourced
+      tear-off line item for a full replacement estimate.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Metal vs. Other Roofing Materials</h2>
+    <p class="mt-4 text-body">
+      Metal roofing costs more up front than asphalt shingles on nearly every system here, even
+      the cheapest corrugated option. Homeowners choose metal anyway for its long service life,
+      its resistance to wind and fire, and, on standing seam and premium systems, the look. See
+      our <a href="/blog/metal-vs-asphalt-roof-cost-comparison/" class="text-link underline hover:text-link-deep">metal vs. asphalt cost comparison</a>
+      for a full side-by-side on cost and lifespan value.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Worked Example</h2>
+    <p class="mt-4 text-body">
+      Take this calculator&rsquo;s own default scenario: a 2,000 sq ft roof entered directly,
+      standing seam. That&rsquo;s 2,000 sq ft at $12.75 per sq ft, or {usd(defaultResult.lineItems.materialCost)}.
+      Apply the Low/High spread (0.85x to 1.15x, the same symmetric band used across this
+      site&rsquo;s calculators) and you get a Low estimate of {usd(defaultResult.low)}, a High
+      estimate of {usd(defaultResult.high)}, and a {usd(defaultResult.mid)} midpoint to budget
+      around. Drop to corrugated steel at ${corrugatedRate.costPerSqft}/sq ft and that same 2,000
+      sq ft roof falls to $17,500. Move up to copper at ${copperRate.costPerSqft}/sq ft and it
+      climbs to $65,000, a {Math.round(copperRate.costPerSqft / corrugatedRate.costPerSqft)}x gap
+      between the cheapest and most expensive system on an identical roof. Try it above with your
+      own roof size and system.
+    </p>
+  </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={DATE_PUBLISHED}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6" aria-labelledby="faq-heading">
+    <h2 id="faq-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Frequently Asked Questions
+    </h2>
+    <div class="mt-4 divide-y divide-hairline">
+      {FAQS.map((faq) => (
+        <details class="group py-4">
+          <summary class="cursor-pointer list-none text-base font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+            {faq.question}
+          </summary>
+          <p class="mt-2 text-sm text-body" set:html={faq.answerHtml ?? faq.answer} />
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-20 sm:px-6" aria-labelledby="related-heading">
+    <h2 id="related-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Related Calculators &amp; Guides
+    </h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <a
+        href="/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Roof Replacement Cost Calculator
+      </a>
+      <a
+        href="/gutter-installation-cost-calculator/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Gutter Installation Cost Calculator
+      </a>
+      <a
+        href="/blog/metal-vs-asphalt-roof-cost-comparison/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Metal vs. Asphalt Roof Cost Comparison
+      </a>
+      <a
+        href="/blog/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        All Blog Guides
+      </a>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,645 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CTASlot from '../components/CTASlot.astro';
+import CitePage from '../components/CitePage.astro';
+import ShareResult from '../components/ShareResult.astro';
+import {
+  WINDOW_TYPES,
+  FRAME_MULT,
+  FRAME_LABELS,
+  FRAME_MULT_SOURCE_NOTE,
+  GLASS_MULT,
+  GLASS_LABELS,
+  GLASS_MULT_SOURCE_NOTE,
+  LABOR_BASE_PER_WINDOW,
+  FULL_FRAME_SURCHARGE,
+  STORY_MULT,
+  LABOR_SOURCE_NOTE,
+  MULTI_WINDOW_DISCOUNT_THRESHOLD,
+  MULTI_WINDOW_DISCOUNT,
+  MULTI_WINDOW_DISCOUNT_SOURCE_NOTE,
+  type FrameMaterialKey,
+  type GlassPackageKey,
+} from '../data/windowRates';
+import { ORGANIZATION } from '../data/author';
+import { calculateWindow, WINDOW_DEFAULT_INPUTS } from '../lib/windowCalculator';
+import { buildGraph, organizationNode, articleNode, faqNode, breadcrumbNode } from '../lib/schema';
+
+const PAGE_PATH = '/window-replacement-cost-calculator/';
+const DATE_PUBLISHED = '2026-07-17';
+
+const title = 'Window Replacement Cost Calculator (2026) | CalcRoofCost.com';
+const description =
+  'Estimate your window replacement cost in seconds. Enter your window count, type, frame material, glass package, install method, and stories, and get an instant Low/Mid/High price breakdown.';
+
+const defaultResult = calculateWindow(WINDOW_DEFAULT_INPUTS);
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+const FRAME_KEYS: FrameMaterialKey[] = ['vinyl', 'aluminum', 'fiberglass', 'wood', 'wood_clad'];
+const GLASS_KEYS: GlassPackageKey[] = ['double', 'double_lowe_argon', 'triple', 'triple_lowe_argon'];
+
+const FAQS = [
+  {
+    question: 'How much does window replacement cost on average?',
+    answer:
+      "10 vinyl double-hung windows, insert install, single story, double-pane Low-E glass, runs $5,239 to $7,087 at this calculator's blended national rate, with a $6,163 midpoint after the whole-house discount for 8-plus windows. That works out to roughly $616 per window on this project; fewer than 8 windows, or a pricier frame or glass package, changes that per-window figure.",
+  },
+  {
+    question: 'What is the cheapest frame material for window replacement?',
+    answer:
+      'Vinyl is the baseline and cheapest frame material in this calculator. Aluminum runs a modest premium above it, fiberglass more still, and wood and wood-clad frames cost the most, with wood-clad the priciest of the five.',
+  },
+  {
+    question: 'Does a full-frame window replacement cost more than an insert replacement?',
+    answer:
+      "Yes. Full-frame replacement, removing the old frame down to the studs rather than inserting a new window into the existing frame, adds a $225-per-window surcharge on top of the base labor cost. Full-frame is typically necessary when the existing frame is rotted, damaged, or being resized; insert replacement works when the existing frame is still sound.",
+  },
+  {
+    question: 'Do I get a discount for replacing many windows at once?',
+    answer:
+      'Yes. This calculator applies a 15% discount to the whole project once you reach 8 or more windows, reflecting the lower per-window cost of one mobilization instead of several separate small jobs. Below 8 windows, no discount applies.',
+  },
+  {
+    question: 'Why is bay/bow window pricing so much higher than the other types?',
+    answer:
+      "A bay or bow window is priced here as one complete multi-panel unit, typically 3 to 5 panels assembled into a single projecting structure, not as a single pane like the other five window types. That's why its base cost is several times higher: you're comparing one bay/bow assembly against one double-hung window, not panel-for-panel.",
+  },
+  {
+    question: "Why isn't there an egress window option?",
+    answer:
+      "Egress windows (code-required emergency-exit windows, common in basements and bedrooms) are left off this calculator's type list because only one of its two rate sources publishes a figure for them, and egress installations frequently require structural well or excavation work that neither source prices as part of a standard window swap. Rather than port an under-sourced or apples-to-oranges figure, this calculator omits egress until a second corroborating source is found.",
+  },
+];
+
+const jsonLd = buildGraph([
+  organizationNode(Astro.site!),
+  articleNode(Astro.site!, {
+    path: PAGE_PATH,
+    headline: title,
+    description,
+    datePublished: DATE_PUBLISHED,
+  }),
+  faqNode(FAQS),
+  breadcrumbNode(Astro.site!, [
+    { name: 'Home', path: '/' },
+    { name: 'Window Replacement Cost Calculator', path: PAGE_PATH },
+  ]),
+]);
+---
+
+<BaseLayout title={title} description={description}>
+  <script>
+    import { calculateWindow, decodeWindowInputs, type WindowCalculatorInputs, type InstallMethod } from '../lib/windowCalculator';
+    import type { WindowTypeKey, FrameMaterialKey, GlassPackageKey, StoryKey } from '../data/windowRates';
+
+    const currency = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    });
+
+    const form = document.getElementById('window-calculator-form') as HTMLFormElement;
+
+    function readInputs(): WindowCalculatorInputs {
+      return {
+        numWindows: Number((document.getElementById('num-windows') as HTMLInputElement).value) || 0,
+        windowType: (document.getElementById('window-type') as HTMLSelectElement).value as WindowTypeKey,
+        frameMaterial: (document.getElementById('frame-material') as HTMLSelectElement).value as FrameMaterialKey,
+        glassPackage: (document.getElementById('glass-package') as HTMLSelectElement).value as GlassPackageKey,
+        installMethod: (document.querySelector('input[name="installMethod"]:checked') as HTMLInputElement).value as InstallMethod,
+        stories: Number((document.querySelector('input[name="stories"]:checked') as HTMLInputElement).value) as StoryKey,
+      };
+    }
+
+    function applyInputs(inputs: WindowCalculatorInputs) {
+      (document.getElementById('num-windows') as HTMLInputElement).value = String(inputs.numWindows);
+      (document.getElementById('window-type') as HTMLSelectElement).value = inputs.windowType;
+      (document.getElementById('frame-material') as HTMLSelectElement).value = inputs.frameMaterial;
+      (document.getElementById('glass-package') as HTMLSelectElement).value = inputs.glassPackage;
+      (document.getElementById(inputs.installMethod === 'full-frame' ? 'method-full-frame' : 'method-insert') as HTMLInputElement).checked = true;
+      (document.getElementById(`stories-${inputs.stories}`) as HTMLInputElement).checked = true;
+    }
+
+    function render() {
+      const inputs = readInputs();
+      const result = calculateWindow(inputs);
+      const errorEl = document.getElementById('result-error')!;
+      const numbersEl = document.getElementById('results-numbers')!;
+
+      if (result.error) {
+        errorEl.textContent = result.error;
+        errorEl.classList.remove('hidden');
+        numbersEl.classList.add('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+        numbersEl.classList.remove('hidden');
+        document.getElementById('result-low')!.textContent = currency.format(result.low);
+        document.getElementById('result-mid')!.textContent = currency.format(result.mid);
+        document.getElementById('result-high')!.textContent = currency.format(result.high);
+        document.getElementById('bd-per-window')!.textContent = currency.format(result.costPerWindow);
+        document.getElementById('bd-subtotal')!.textContent = currency.format(result.subtotal);
+        document.getElementById('bd-discount-row')!.classList.toggle('hidden', !result.discountApplied);
+        document.getElementById('bd-total')!.textContent = currency.format(result.total);
+      }
+
+      window.dispatchEvent(new CustomEvent('windowcalc:inputs-changed', { detail: inputs }));
+      return { inputs, result };
+    }
+
+    form.addEventListener('input', () => {
+      render();
+    });
+
+    window.addEventListener('windowcalc:restore-inputs', (event) => {
+      applyInputs((event as CustomEvent<WindowCalculatorInputs>).detail);
+      render();
+    });
+
+    const pendingRestore = (window as unknown as { __pendingRestore?: Record<string, WindowCalculatorInputs> }).__pendingRestore?.windowcalc;
+    if (pendingRestore) {
+      applyInputs(pendingRestore);
+    }
+
+    const statusEl = document.getElementById('result-action-status')!;
+
+    document.getElementById('copy-result-button')?.addEventListener('click', async () => {
+      const { result } = render();
+      const typeLabel = (document.getElementById('window-type') as HTMLSelectElement).selectedOptions[0].textContent;
+      const summary = [
+        'Window Replacement Cost Estimate',
+        'CalcRoofCost.com',
+        `Windows: ${result.numWindows} x ${typeLabel}`,
+        `Per window: ${currency.format(result.costPerWindow)}`,
+        `Low: ${currency.format(result.low)}`,
+        `Mid: ${currency.format(result.mid)}`,
+        `High: ${currency.format(result.high)}`,
+      ].join('\n');
+      await navigator.clipboard.writeText(summary);
+      statusEl.textContent = 'Result copied to clipboard!';
+      window.setTimeout(() => (statusEl.textContent = ''), 2500);
+    });
+
+    document.getElementById('download-summary-button')?.addEventListener('click', () => {
+      const { result } = render();
+      const typeLabel = (document.getElementById('window-type') as HTMLSelectElement).selectedOptions[0].textContent;
+      const frameLabel = (document.getElementById('frame-material') as HTMLSelectElement).selectedOptions[0].textContent;
+      const glassLabel = (document.getElementById('glass-package') as HTMLSelectElement).selectedOptions[0].textContent;
+      const lines = [
+        'Window Replacement Cost Estimate',
+        'CalcRoofCost.com',
+        '',
+        `Windows: ${result.numWindows} x ${typeLabel}`,
+        `Frame: ${frameLabel}`,
+        `Glass: ${glassLabel}`,
+        '',
+        `Cost per window: ${currency.format(result.costPerWindow)}`,
+        `Subtotal: ${currency.format(result.subtotal)}`,
+        ...(result.discountApplied
+          ? [`Whole-house discount (${result.numWindows} windows): applied`]
+          : []),
+        `Total: ${currency.format(result.total)}`,
+        '',
+        `Low estimate: ${currency.format(result.low)}`,
+        `Mid estimate: ${currency.format(result.mid)}`,
+        `High estimate: ${currency.format(result.high)}`,
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'window-replacement-cost-estimate.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    render();
+  </script>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <section class="mx-auto max-w-4xl px-4 pt-12 pb-8 sm:px-6 sm:pt-16">
+    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+      Window Replacement Cost Calculator
+    </h1>
+    <p class="mt-4 max-w-2xl text-lg text-body">
+      Get an instant Low / Mid / High estimate for window replacement. Enter how many windows,
+      pick a type, frame material, and glass package, choose insert or full-frame install, and
+      see how the price changes.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6" aria-labelledby="calculator-heading">
+    <h2 id="calculator-heading" class="sr-only">Calculator</h2>
+    <div class="grid gap-6 rounded-xl border border-hairline bg-canvas p-6 shadow-sm sm:p-8 lg:grid-cols-2">
+      <form id="window-calculator-form" class="space-y-6">
+        <div>
+          <label for="num-windows" class="block text-sm font-medium text-ink">Number of Windows</label>
+          <input
+            type="number"
+            id="num-windows"
+            name="num-windows"
+            min="1"
+            max="100"
+            step="1"
+            inputmode="numeric"
+            autocomplete="off"
+            value={WINDOW_DEFAULT_INPUTS.numWindows}
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          />
+          <p class="mt-1 text-xs text-mute">A {MULTI_WINDOW_DISCOUNT * 100}% whole-house discount applies at {MULTI_WINDOW_DISCOUNT_THRESHOLD}+ windows.</p>
+        </div>
+
+        <div>
+          <label for="window-type" class="block text-sm font-medium text-ink">Window Type</label>
+          <select
+            id="window-type"
+            name="window-type"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {WINDOW_TYPES.map((t) => (
+              <option value={t.key} selected={t.key === WINDOW_DEFAULT_INPUTS.windowType}>
+                {t.label} (${t.baseCost} base)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label for="frame-material" class="block text-sm font-medium text-ink">Frame Material</label>
+          <select
+            id="frame-material"
+            name="frame-material"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {FRAME_KEYS.map((key) => (
+              <option value={key} selected={key === WINDOW_DEFAULT_INPUTS.frameMaterial}>
+                {FRAME_LABELS[key]} ({FRAME_MULT[key].toFixed(2)}x)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label for="glass-package" class="block text-sm font-medium text-ink">Glass Package</label>
+          <select
+            id="glass-package"
+            name="glass-package"
+            class="mt-1 block w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {GLASS_KEYS.map((key) => (
+              <option value={key} selected={key === WINDOW_DEFAULT_INPUTS.glassPackage}>
+                {GLASS_LABELS[key]} ({GLASS_MULT[key].toFixed(2)}x)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">Install Method</legend>
+          <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="installMethod" id="method-insert" value="insert" checked class="h-4 w-4" />
+              Insert (reuse existing frame)
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="installMethod" id="method-full-frame" value="full-frame" class="h-4 w-4" />
+              Full-Frame (+{FULL_FRAME_SURCHARGE}/window)
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend class="text-sm font-medium text-ink">Stories</legend>
+          <div class="mt-2 flex gap-6">
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="stories" id="stories-1" value="1" checked class="h-4 w-4" />
+              1 Story
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="stories" id="stories-2" value="2" class="h-4 w-4" />
+              2 Stories
+            </label>
+            <label class="flex items-center gap-2 text-sm text-body">
+              <input type="radio" name="stories" id="stories-3" value="3" class="h-4 w-4" />
+              3 Stories
+            </label>
+          </div>
+        </fieldset>
+      </form>
+
+      <div class="rounded-lg bg-canvas-soft-2 p-6" aria-live="polite">
+        <p class="text-sm font-medium text-body">Estimated Cost</p>
+        <p id="result-error" class="mt-2 hidden text-sm text-error" role="alert"></p>
+        <div id="results-numbers">
+        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Low</p>
+            <p id="result-low" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.low)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">Mid</p>
+            <p id="result-mid" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.mid)}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-mute">High</p>
+            <p id="result-high" class="tabular-nums text-xl font-semibold text-ink">
+              {usd(defaultResult.high)}
+            </p>
+          </div>
+        </div>
+
+        <table class="mt-6 w-full text-sm">
+          <caption class="sr-only">Itemized cost breakdown</caption>
+          <thead>
+            <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+              <th scope="col" class="py-2 font-medium">Line Item</th>
+              <th scope="col" class="py-2 text-right font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Cost per Window</td>
+              <td id="bd-per-window" class="tabular-nums py-2 text-right text-ink">
+                {usd(defaultResult.costPerWindow)}
+              </td>
+            </tr>
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">Subtotal</td>
+              <td id="bd-subtotal" class="tabular-nums py-2 text-right text-ink">
+                {usd(defaultResult.subtotal)}
+              </td>
+            </tr>
+            <tr id="bd-discount-row" class:list={["border-b border-hairline", { hidden: !defaultResult.discountApplied }]}>
+              <td class="py-2 text-body">Whole-House Discount ({MULTI_WINDOW_DISCOUNT * 100}%)</td>
+              <td class="tabular-nums py-2 text-right text-ink">applied</td>
+            </tr>
+            <tr>
+              <td class="py-2 font-medium text-ink">Total</td>
+              <td id="bd-total" class="tabular-nums py-2 text-right font-medium text-ink">
+                {usd(defaultResult.total)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            id="copy-result-button"
+            class="rounded-full bg-ink px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Copy Result
+          </button>
+          <button
+            type="button"
+            id="download-summary-button"
+            class="rounded-full border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-canvas-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            Download Summary
+          </button>
+        </div>
+        <span id="result-action-status" class="mt-2 block text-sm text-success" aria-live="polite"></span>
+
+        <div class="mt-6 border-t border-hairline pt-6">
+          <ShareResult calculator="window" />
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-4 text-xs text-mute">
+      This is a directional planning estimate, not a site-specific quote. Odd window shapes,
+      structural repairs, and local labor rates can move a contractor&rsquo;s actual bid.
+    </p>
+
+    <details class="group mt-6 rounded-lg border border-hairline p-4">
+      <summary class="cursor-pointer list-none text-sm font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+        How we calculate this
+      </summary>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-body">
+        <li>
+          This is a per-window pricing engine, not an area calculator: base cost for your window
+          type, times a frame-material multiplier, times a glass-package multiplier, plus labor
+          that scales with story count and install method.
+        </li>
+        <li>{FRAME_MULT_SOURCE_NOTE}</li>
+        <li>{GLASS_MULT_SOURCE_NOTE}</li>
+        <li>{LABOR_SOURCE_NOTE}</li>
+        <li>{MULTI_WINDOW_DISCOUNT_SOURCE_NOTE}</li>
+        <li>
+          Bay/bow pricing is a complete-unit figure (one multi-panel assembly), not a per-pane
+          figure like the other five types. See the Methodology section below.
+        </li>
+        <li>
+          This is a planning estimate, not a quote. Get 2&ndash;3 bids from licensed local
+          contractors before budgeting against these numbers.
+        </li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-12 sm:px-6">
+    <CTASlot label="Get matched with a local window installer" />
+  </section>
+
+  <article class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <h2 class="text-2xl font-semibold tracking-tight text-ink">How This Calculator Works</h2>
+    <p class="mt-4 text-body">
+      Unlike this site&rsquo;s roof, gutter, metal roof, and siding calculators, this one doesn&rsquo;t
+      price by area. Windows are priced and sold per unit, so this calculator prices per window
+      instead: it starts with a base installed cost for your chosen window type, multiplies that by
+      a frame-material multiplier and a glass-package multiplier, then adds labor that scales with
+      how many stories the window sits on and whether the job is an insert or a full-frame
+      replacement. That per-window figure is rounded to the nearest whole dollar before being
+      multiplied by your window count, so the &ldquo;Cost per Window&rdquo; line item you see
+      always multiplies out exactly to the subtotal below it, no rounding surprises if you check
+      the math by hand.
+    </p>
+    <p class="mt-4 text-body">
+      Frame material and glass package are both expressed as multipliers on the base cost rather
+      than flat add-ons, since a premium frame or glass upgrade costs proportionally more on a
+      larger, pricier window type than on a small one. Labor is different: it&rsquo;s a flat
+      per-window figure that scales with story count (ladder work and staging cost more the higher
+      you go) and jumps by a fixed surcharge for full-frame installs, which take significantly
+      longer than an insert that reuses the existing frame. Once a project reaches
+      {MULTI_WINDOW_DISCOUNT_THRESHOLD} or more windows, the whole subtotal gets a
+      {MULTI_WINDOW_DISCOUNT * 100}% discount, reflecting the efficiency of one mobilization
+      instead of several smaller jobs.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Methodology</h2>
+    <p class="mt-4 text-body">
+      Every number on this page links to where it came from. Base costs blend two sources; every
+      multiplier, the labor figures, and the multi-window discount come from one source&rsquo;s
+      explicitly published formula. Figures verified July 2026.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Base Installed Cost by Window Type</h3>
+    <p class="mt-2 text-body">
+      Two sources: <a href="https://constructlytools.com/cost-estimators/window-replacement-cost-calculator/" class="text-link underline hover:text-link-deep">constructlytools.com&rsquo;s window replacement cost calculator</a>,
+      checked 2026-07-17 (updated 2026-05-16), which publishes an explicit insert-mode midpoint per
+      window type along with the full multiplier formula this calculator implements, and
+      <a href="https://www.thisoldhouse.com/windows/window-replacement-cost" class="text-link underline hover:text-link-deep">thisoldhouse.com&rsquo;s window replacement cost guide</a>,
+      checked 2026-07-17 (updated 2026-06-23), which publishes per-type cost averages used to
+      cross-validate. Base cost for each type below (insert install, single story, vinyl frame,
+      double-pane Low-E baseline) is the blend of both sources, except bay/bow, disclosed
+      separately.
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-hairline text-left text-xs uppercase tracking-wide text-mute">
+            <th scope="col" class="py-2 font-medium">Window Type</th>
+            <th scope="col" class="py-2 text-right font-medium">Base Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {WINDOW_TYPES.map((t) => (
+            <tr class="border-b border-hairline">
+              <td class="py-2 text-body">{t.label}</td>
+              <td class="tabular-nums py-2 text-right text-ink">${t.baseCost}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-sm text-body">
+      Bay/bow is priced as one complete multi-panel unit from constructlytools.com&rsquo;s
+      complete-unit range of $1,200&ndash;4,500 (midpoint $2,850), not blended with This Old
+      House, whose figure prices a single panel rather than a full bay/bow assembly. Those are
+      different quantities, and averaging them would compare a whole structure against one of its
+      parts, so bay/bow stays single-sourced to the figure that matches what this calculator
+      actually prices: a full unit.
+    </p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Frame, Glass, Labor &amp; Multi-Window Discount</h3>
+    <p class="mt-2 text-body">{FRAME_MULT_SOURCE_NOTE}</p>
+    <p class="mt-2 text-body">{GLASS_MULT_SOURCE_NOTE}</p>
+    <p class="mt-2 text-body">{LABOR_SOURCE_NOTE}</p>
+    <p class="mt-2 text-body">{MULTI_WINDOW_DISCOUNT_SOURCE_NOTE}</p>
+
+    <h3 class="mt-6 text-lg font-semibold tracking-tight text-ink">Why Egress Windows Are Omitted</h3>
+    <p class="mt-2 text-body">
+      Egress windows are code-required emergency-exit windows, common in basements and
+      below-grade bedrooms. They&rsquo;re left off this calculator&rsquo;s type list because only
+      constructlytools.com publishes a figure for them, and egress installs frequently require
+      structural well or excavation work that neither source prices as part of a like-for-like
+      window swap. A single-sourced figure that also doesn&rsquo;t price the structural work most
+      egress jobs actually need would be misleading rather than useful, so egress is omitted
+      until a second corroborating source is found.
+    </p>
+
+    <p class="mt-6 text-sm text-mute">
+      Methodology last updated {DATE_PUBLISHED}. Every rate, multiplier, and blend above lives as
+      a <code class="font-mono-caption text-xs">sourceNote</code> next to its value in this
+      site&rsquo;s underlying rate data. Found a source that&rsquo;s gone stale or a figure you
+      think is wrong? <a href="/contact/" class="text-link underline hover:text-link-deep">Contact us</a>
+      with the page and the number.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">What Drives Window Replacement Cost</h2>
+    <p class="mt-4 text-body">
+      <strong>Window type</strong> sets the base price before any multiplier is applied. A picture
+      window, a fixed pane with no moving parts, is the cheapest type here; a bay or bow window,
+      a full multi-panel assembly that projects out from the wall, costs the most by a wide margin
+      because it&rsquo;s several windows&rsquo; worth of material and structural framing in one
+      unit. <strong>Frame material</strong> and <strong>glass package</strong> both scale with the
+      base price: upgrading either on a bay/bow window adds far more in dollar terms than the same
+      upgrade on a picture window, because both are multipliers, not flat add-ons.
+    </p>
+    <p class="mt-4 text-body">
+      <strong>Install method</strong> matters most when the existing frame is compromised: rot,
+      water damage, or a resize all push a job from insert to full-frame, which costs more in
+      labor because the crew is removing and replacing the frame itself, not just swapping the
+      sash and glass inside an intact frame. <strong>Story count</strong> adds labor cost the same
+      way it does across this site&rsquo;s other calculators: higher stories need more staging and
+      more careful, slower work. <strong>Project size</strong> is the one lever that reduces price
+      here: once you cross {MULTI_WINDOW_DISCOUNT_THRESHOLD} windows, the whole project gets
+      cheaper per window, which is worth keeping in mind if you&rsquo;re deciding whether to
+      replace a few windows now and the rest later, or all of them in one project.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-semibold tracking-tight text-ink">Worked Example</h2>
+    <p class="mt-4 text-body">
+      Take this calculator&rsquo;s own default scenario: 10 vinyl double-hung windows, insert
+      install, single story, double-pane Low-E glass. Base cost is $500 per window; vinyl carries
+      no frame multiplier (1.00x) and double-pane Low-E carries a 1.15x glass multiplier, so
+      material and glass come to $500 &times; 1.00 &times; 1.15 = $575. Add insert labor at $150
+      per window (single-story, so no story multiplier premium) and you get {usd(defaultResult.costPerWindow)} per
+      window. Multiply by 10 windows and the subtotal is {usd(defaultResult.subtotal)}. Because 10
+      windows clears the {MULTI_WINDOW_DISCOUNT_THRESHOLD}-window threshold, a {MULTI_WINDOW_DISCOUNT * 100}%
+      whole-house discount applies, bringing the total to {usd(defaultResult.total)}. Apply the
+      Low/High spread (0.85x to 1.15x, the same symmetric band used across this site&rsquo;s
+      calculators) and you get a Low estimate of {usd(defaultResult.low)} and a High estimate of
+      {usd(defaultResult.high)}. Switch to full-frame install and every window in that same
+      project picks up a flat $225 surcharge before the discount is applied. Try it above with
+      your own window count and specs.
+    </p>
+  </article>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <CitePage
+      title={title}
+      authorName={ORGANIZATION.name}
+      datePublished={DATE_PUBLISHED}
+      url={new URL(PAGE_PATH, Astro.site).href}
+    />
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 pb-16 sm:px-6" aria-labelledby="faq-heading">
+    <h2 id="faq-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Frequently Asked Questions
+    </h2>
+    <div class="mt-4 divide-y divide-hairline">
+      {FAQS.map((faq) => (
+        <details class="group py-4">
+          <summary class="cursor-pointer list-none text-base font-medium text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link">
+            {faq.question}
+          </summary>
+          <p class="mt-2 text-sm text-body">{faq.answer}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pb-20 sm:px-6" aria-labelledby="related-heading">
+    <h2 id="related-heading" class="text-2xl font-semibold tracking-tight text-ink">
+      Related Calculators &amp; Guides
+    </h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <a
+        href="/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Roof Replacement Cost Calculator
+      </a>
+      <a
+        href="/gutter-installation-cost-calculator/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Gutter Installation Cost Calculator
+      </a>
+      <a
+        href="/metal-roof-cost-calculator/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Metal Roof Cost Calculator
+      </a>
+      <a
+        href="/siding-cost-calculator/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Siding Cost Calculator
+      </a>
+      <a
+        href="/blog/roof-repair-vs-replacement/"
+        class="flex items-center justify-between rounded-lg border border-hairline bg-canvas p-4 text-sm font-medium text-ink transition-colors hover:bg-canvas-soft"
+      >
+        Roof Repair vs. Replacement: How to Decide
+      </a>
+    </div>
+  </section>
+</BaseLayout>
